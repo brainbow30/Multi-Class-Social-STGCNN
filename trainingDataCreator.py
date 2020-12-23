@@ -1,5 +1,5 @@
+import math
 import os
-import shutil
 
 import numpy as np
 
@@ -9,14 +9,22 @@ def rowConversion(row):
     return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0
 
 
-def convertData(data, samplingRate=10):
+def convertData(data, percentageSplit=0.7, samplingRate=5):
     trainingData = []
+    testData = []
+    maxTrainingFrame = int(math.floor(len(data) * percentageSplit))
+    frame = 0
     for row in data:
         row = rowConversion(row)
         if (row[0] % samplingRate == 0.0):
-            row = (row[0] / 10.0,) + row[1:]
-            trainingData.append(row)
-    return np.asarray(trainingData)
+            if (frame <= maxTrainingFrame):
+                row = (row[0] / 10.0,) + row[1:]
+                trainingData.append(row)
+            else:
+                row = (row[0] / 10.0,) + row[1:]
+                testData.append(row)
+        frame += 1
+    return np.asarray(trainingData), np.asarray(testData)
 
 
 def read_file(_path, delim='space'):
@@ -33,6 +41,7 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
+# todo create proper validation data
 def createTrainingData(inputFolder, outputFolder):
     locations = os.listdir(inputFolder)
     for location in locations:
@@ -41,15 +50,23 @@ def createTrainingData(inputFolder, outputFolder):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingData = convertData(data)
+            trainingData, testData = convertData(data)
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "test")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "test"))
-            shutil.rmtree(os.path.join(outputFolder, location, video, "val"), ignore_errors=True)
-            shutil.rmtree(os.path.join(outputFolder, location, video, "train"), ignore_errors=True)
-            shutil.copytree("trainValFolders\\val", os.path.join(outputFolder, location, video, "val"))
-            shutil.copytree("trainValFolders\\train", os.path.join(outputFolder, location, video, "train"))
+            if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "train")))):
+                os.makedirs(os.path.join(inputFolder + "Processed", location, video, "train"))
+            if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "val")))):
+                os.makedirs(os.path.join(inputFolder + "Processed", location, video, "val"))
             np.savetxt(
                 os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
+                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
+            np.savetxt(
+                os.path.join(outputFolder, location, video, "val", "stan" + "_" + location + "_" + video + ".txt"),
+                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
+            np.savetxt(
+                os.path.join(outputFolder, location, video, "train", "stan" + "_" + location + "_" + video + ".txt"),
                 trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                 encoding=None)
 

@@ -19,7 +19,7 @@ class VideoCamera(object):
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
         self.trajectoryPrediction = trajectoryPrediction()
-        self.samplingRate = 10
+        self.samplingRate = 5
 
     def __del__(self):
         # releasing camera

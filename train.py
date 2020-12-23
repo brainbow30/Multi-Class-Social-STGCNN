@@ -230,4 +230,4 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-    start_training("stanfordProcessed//bookstore//video0", "stanford-bookstore-video0", 10)
+    start_training("stanfordProcessed//bookstore//video0", "stanford-bookstore-video0", 250)
