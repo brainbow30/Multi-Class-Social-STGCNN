@@ -19,6 +19,7 @@ class VideoCamera(object):
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
         self.trajectoryPrediction = trajectoryPrediction()
+        self.samplingRate = 10
 
     def __del__(self):
         # releasing camera
@@ -27,15 +28,18 @@ class VideoCamera(object):
     def get_frame(self, displayCircles=True):
         # extracting frames
         ret, frame = self.video.read()
-        annotations = self.annotations.getFrameAnnotations(self.video.get(cv2.CAP_PROP_POS_FRAMES))
+        frameNum = int(self.video.get(cv2.CAP_PROP_POS_FRAMES))
+        annotations = self.annotations.getFrameAnnotations(frameNum)
         newPedPastTraj = {}
         keys = list(self.pedPastTraj.keys())
         # plot tracking circles and update past trajectories
         for annotation in annotations:
             if (displayCircles):
                 self.displayAnnotation(frame, annotation)
-            self.updatePastTraj(annotation, newPedPastTraj)
-        self.pedPastTraj = newPedPastTraj
+            if (frameNum % self.samplingRate == 0):
+                self.updatePastTraj(annotation, newPedPastTraj)
+        if (frameNum % self.samplingRate == 0):
+            self.pedPastTraj = newPedPastTraj
 
         # predict trajectories
         predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj)

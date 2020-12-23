@@ -9,10 +9,13 @@ def rowConversion(row):
     return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0
 
 
-def convertData(data):
+def convertData(data, samplingRate=10):
     trainingData = []
     for row in data:
-        trainingData.append(rowConversion(row))
+        row = rowConversion(row)
+        if (row[0] % samplingRate == 0.0):
+            row = (row[0] / 10.0,) + row[1:]
+            trainingData.append(row)
     return np.asarray(trainingData)
 
 
@@ -49,3 +52,6 @@ def createTrainingData(inputFolder, outputFolder):
                 os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
                 trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                 encoding=None)
+
+
+createTrainingData("datasets\\stanford", "datasets\\stanfordProcessed")

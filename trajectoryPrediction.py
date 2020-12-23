@@ -14,7 +14,7 @@ class trajectoryPrediction(object):
                                    kernel_size=3, pred_seq_len=12).cuda()
         self.model.load_state_dict(
             torch.load(
-                "C:\\Users\\brain\\PycharmProjects\\Social-STGCNN\\checkpoint\\social-stgcnn-hotel\\val_best.pth"))
+                "checkpoint\\stanford-bookstore-video0\\val_best.pth"))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):
@@ -24,7 +24,7 @@ class trajectoryPrediction(object):
             pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1]) == 8, pedPastTraj.items()))
         if (len(pedPastTraj) > 2):
             seq_list = []
-            for key in sorted(list(pedPastTraj.keys())):
+            for key in (list(pedPastTraj.keys())):
                 pedestrianSeq = pedPastTraj[key]
                 xcoords = []
                 ycoords = []
