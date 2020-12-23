@@ -43,8 +43,8 @@ def createTrainingData(inputFolder, outputFolder):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "test"))
             shutil.rmtree(os.path.join(outputFolder, location, video, "val"), ignore_errors=True)
             shutil.rmtree(os.path.join(outputFolder, location, video, "train"), ignore_errors=True)
-            shutil.copytree("testValFolders\\val", os.path.join(outputFolder, location, video, "val"))
-            shutil.copytree("testValFolders\\train", os.path.join(outputFolder, location, video, "train"))
+            shutil.copytree("trainValFolders\\val", os.path.join(outputFolder, location, video, "val"))
+            shutil.copytree("trainValFolders\\train", os.path.join(outputFolder, location, video, "train"))
             np.savetxt(
                 os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
                 trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
