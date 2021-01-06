@@ -108,7 +108,7 @@ def read_file(_path, delim='\t'):
 
 
 class TrajectoryDataset(Dataset):
-    """Dataloder for the Trajectory datasets"""
+    """Dataloder for the Trajectory trainingData"""
 
     def __init__(
             self, data_dir, obs_len=8, pred_len=8, skip=1, threshold=0.002,

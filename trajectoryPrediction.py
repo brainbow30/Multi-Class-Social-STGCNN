@@ -14,7 +14,7 @@ class trajectoryPrediction(object):
                                    kernel_size=3, pred_seq_len=12).cuda()
         self.model.load_state_dict(
             torch.load(
-                "checkpoint\\stanford-bookstore-video0\\val_best.pth"))
+                "checkpoint\\stanford-bookstore-video0-15\\val_best.pth"))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):

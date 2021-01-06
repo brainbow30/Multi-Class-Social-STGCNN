@@ -117,7 +117,8 @@ def graph_loss(V_pred, V_target):
     return bivariate_loss(V_pred, V_target)
 
 
-def start_training(datasetLocation, checkpointLocation, num_epochs):
+def start_training(datasetLocation, frames_to_skip, num_epochs):
+    checkpointLocation = datasetLocation + "-" + str(frames_to_skip)
     print('*' * 30)
     print("Training initiating....")
     print(args)
@@ -125,10 +126,9 @@ def start_training(datasetLocation, checkpointLocation, num_epochs):
     # Data prep
     obs_seq_len = args.obs_seq_len
     pred_seq_len = args.pred_seq_len
-    data_set = './datasets/' + datasetLocation + '/'
-
+    data_set = './trainingData//stanfordProcessed//' + datasetLocation + '//'
     dset_train = TrajectoryDataset(
-        data_set + 'train/',
+        data_set + 'train//',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
         skip=1, norm_lap_matr=True)
@@ -230,4 +230,5 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-    start_training("stanfordProcessed//bookstore//video0", "stanford-bookstore-video0", 250)
+
+    start_training("bookstore//video0", 5, 250)
