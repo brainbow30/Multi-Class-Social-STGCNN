@@ -9,22 +9,25 @@ def rowConversion(row):
     return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0
 
 
-def convertData(data, percentageSplit=0.7, samplingRate=5):
+def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15):
     trainingData = []
     testData = []
-    maxTrainingFrame = int(math.floor(len(data) * percentageSplit))
+    validationData = []
+    maxTrainingFrame = int(math.floor(len(data) * trainingTestSplit))
+    maxTestFrame = maxTrainingFrame + int(math.floor(len(data) * (1 - trainingTestSplit) * testValidSplit))
     frame = 0
     for row in data:
         row = rowConversion(row)
         if (row[0] % samplingRate == 0.0):
+            row = (row[0] / 10.0,) + row[1:]
             if (frame <= maxTrainingFrame):
-                row = (row[0] / 10.0,) + row[1:]
                 trainingData.append(row)
-            else:
-                row = (row[0] / 10.0,) + row[1:]
+            elif (frame <= maxTestFrame):
                 testData.append(row)
+            else:
+                validationData.append(row)
         frame += 1
-    return np.asarray(trainingData), np.asarray(testData)
+    return np.asarray(trainingData), np.asarray(testData), np.asarray(validationData)
 
 
 def read_file(_path, delim='space'):
@@ -33,7 +36,6 @@ def read_file(_path, delim='space'):
         delim = '\t'
     elif delim == 'space':
         delim = ' '
-    print(_path)
     with open(_path, 'r') as f:
         for line in f:
             line = line.strip().split(delim)
@@ -42,7 +44,7 @@ def read_file(_path, delim='space'):
 
 
 # todo create proper validation data
-def createTrainingData(inputFolder, outputFolder):
+def createTrainingData(inputFolder, outputFolder, samplingRate=15):
     locations = os.listdir(inputFolder)
     for location in locations:
         videos = os.listdir(os.path.join(inputFolder, location))
@@ -50,25 +52,23 @@ def createTrainingData(inputFolder, outputFolder):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingData, testData = convertData(data)
-            if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "test")))):
-                os.makedirs(os.path.join(inputFolder + "Processed", location, video, "test"))
+            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate)
+
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "train")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "train"))
+            if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "test")))):
+                os.makedirs(os.path.join(inputFolder + "Processed", location, video, "test"))
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "val")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "val"))
+            np.savetxt(
+                os.path.join(outputFolder, location, video, "train", "stan" + "_" + location + "_" + video + ".txt"),
+                trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
             np.savetxt(
                 os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
                 testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                 encoding=None)
             np.savetxt(
                 os.path.join(outputFolder, location, video, "val", "stan" + "_" + location + "_" + video + ".txt"),
-                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                 encoding=None)
-            np.savetxt(
-                os.path.join(outputFolder, location, video, "train", "stan" + "_" + location + "_" + video + ".txt"),
-                trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
-
-
-createTrainingData("datasets\\stanford", "datasets\\stanfordProcessed")
