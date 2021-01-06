@@ -6,10 +6,11 @@ import numpy as np
 
 def rowConversion(row):
     ped_id, x_min, y_min, x_max, y_max, frame, _, _, _, label = row
-    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0
+    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0, eval(
+        label)
 
 
-def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15):
+def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15, labels=None):
     trainingData = []
     testData = []
     validationData = []
@@ -18,14 +19,15 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15
     frame = 0
     for row in data:
         row = rowConversion(row)
-        if (row[0] % samplingRate == 0.0):
-            row = (row[0] / 10.0,) + row[1:]
-            if (frame <= maxTrainingFrame):
-                trainingData.append(row)
-            elif (frame <= maxTestFrame):
-                testData.append(row)
-            else:
-                validationData.append(row)
+        if (labels is None or row[4] in labels):
+            if (row[0] % samplingRate == 0.0):
+                row = (row[0] / 10.0,) + row[1:-1]
+                if (frame <= maxTrainingFrame):
+                    trainingData.append(row)
+                elif (frame <= maxTestFrame):
+                    testData.append(row)
+                else:
+                    validationData.append(row)
         frame += 1
     return np.asarray(trainingData), np.asarray(testData), np.asarray(validationData)
 
@@ -52,7 +54,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate)
+            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate, labels=["Biker"])
 
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "train")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "train"))
@@ -72,3 +74,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15):
                 os.path.join(outputFolder, location, video, "val", "stan" + "_" + location + "_" + video + ".txt"),
                 validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                 encoding=None)
+
+
+print("Converting Stanford Dataset...")
+createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=5)
