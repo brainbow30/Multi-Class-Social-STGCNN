@@ -21,7 +21,7 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15
         row = rowConversion(row)
         if (labels is None or row[4] in labels):
             if (row[0] % samplingRate == 0.0):
-                row = (row[0] / 10.0,) + row[1:-1]
+                row = (row[0] / samplingRate,) + row[1:-1]
                 if (frame <= maxTrainingFrame):
                     trainingData.append(row)
                 elif (frame <= maxTestFrame):
@@ -45,8 +45,7 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
-# todo create proper validation data
-def createTrainingData(inputFolder, outputFolder, samplingRate=15):
+def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     locations = os.listdir(inputFolder)
     for location in locations:
         videos = os.listdir(os.path.join(inputFolder, location))
@@ -54,7 +53,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate, labels=["Biker"])
+            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate, labels=None)
 
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "train")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "train"))
@@ -62,19 +61,30 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "test"))
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "val")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "val"))
-            np.savetxt(
-                os.path.join(outputFolder, location, video, "train", "stan" + "_" + location + "_" + video + ".txt"),
-                trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
-            np.savetxt(
-                os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
-                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
-            np.savetxt(
-                os.path.join(outputFolder, location, video, "val", "stan" + "_" + location + "_" + video + ".txt"),
-                validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
+            if (not np.any(np.isnan(trainingData))):
+                np.savetxt(
+                    os.path.join(outputFolder, location, video, "train",
+                                 "stan" + "_" + location + "_" + video + ".txt"),
+                    trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    encoding=None)
+            else:
+                print("Invalid Training Data")
+            if (not np.any(np.isnan(testData))):
+                np.savetxt(
+                    os.path.join(outputFolder, location, video, "test", "stan" + "_" + location + "_" + video + ".txt"),
+                    testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    encoding=None)
+            else:
+                print("Invalid Test Data")
+            if (not np.any(np.isnan(validationData))):
+                np.savetxt(
+                    os.path.join(outputFolder, location, video, "val", "stan" + "_" + location + "_" + video + ".txt"),
+                    validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    encoding=None)
+            else:
+                print("Invalid Validation Data")
 
 
 print("Converting Stanford Dataset...")
-createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=5)
+createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=5, labels=["Biker"])
+print("Done")
