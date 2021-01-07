@@ -18,8 +18,9 @@ class VideoCamera(object):
         self.annotations = annotations(self.path)
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
-        self.trajectoryPrediction = trajectoryPrediction()
         self.samplingRate = 5
+        self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate)
+        self.predTrajectories = []
 
     def __del__(self):
         # releasing camera
@@ -40,16 +41,21 @@ class VideoCamera(object):
                 self.updatePastTraj(annotation, newPedPastTraj)
         if (frameNum % self.samplingRate == 0):
             self.pedPastTraj = newPedPastTraj
-
-        # predict trajectories
-        predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj)
-        for framePrediction in predTrajectories:
+            # predict trajectories
+            self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj, samples=1)
+        prevFrame = None
+        for framePrediction in self.predTrajectories:
             for i in range(len(framePrediction)):
                 predX, predY = framePrediction[i]
                 pos = [predX, predY]
                 y, x = utils.to_image_frame(self.H, np.array(pos))
                 cv2.circle(frame, center=(x, y), radius=3, color=self.colours[keys[i]], thickness=2)
-
+                if (not (prevFrame is None)):
+                    predX, predY = prevFrame[i]
+                    pos = [predX, predY]
+                    y2, x2 = utils.to_image_frame(self.H, np.array(pos))
+                    cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
+            prevFrame = framePrediction
         ret, jpeg = cv2.imencode('.jpg', frame)
         return ret, jpeg.tobytes()
 

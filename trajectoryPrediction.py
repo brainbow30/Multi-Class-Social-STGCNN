@@ -8,13 +8,13 @@ from model import social_stgcnn
 
 
 class trajectoryPrediction(object):
-    def __init__(self):
+    def __init__(self, path, frame_skip):
         self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
                                    output_feat=5, seq_len=8,
                                    kernel_size=3, pred_seq_len=12).cuda()
         self.model.load_state_dict(
             torch.load(
-                "checkpoint\\stanford-bookstore-video0-15\\val_best.pth"))
+                "checkpoint\\" + path + "-" + str(frame_skip) + "\\val_best.pth"))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):
