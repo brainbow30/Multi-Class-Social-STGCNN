@@ -5,6 +5,7 @@ from multiprocessing.spawn import freeze_support
 from torch import optim
 from torch.utils.data import DataLoader
 
+import config
 from metrics import *
 from model import *
 from utils import *
@@ -117,8 +118,8 @@ def graph_loss(V_pred, V_target):
     return bivariate_loss(V_pred, V_target)
 
 
-def start_training(datasetLocation, frames_to_skip, num_epochs):
-    checkpointLocation = datasetLocation + "-" + str(frames_to_skip)
+def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
+    checkpointLocation = datasetLocation + "-" + str(sampling_rate)
     print('*' * 30)
     print("Training initiating....")
     print(args)
@@ -131,19 +132,19 @@ def start_training(datasetLocation, frames_to_skip, num_epochs):
         data_set + 'train//',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True)
+        skip=config.samplingRate, norm_lap_matr=True)
 
     loader_train = DataLoader(
         dset_train,
         batch_size=1,  # This is irrelative to the args batch size parameter
-        shuffle=True,
+        shuffle=False,
         num_workers=0)
 
     dset_val = TrajectoryDataset(
         data_set + 'val/',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True)
+        skip=config.samplingRate, norm_lap_matr=True)
 
     loader_val = DataLoader(
         dset_val,
@@ -231,4 +232,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    start_training("bookstore//video0", 5, 250)
+    start_training("bookstore//video0", sampling_rate=config.samplingRate, num_epochs=config.epochs)
