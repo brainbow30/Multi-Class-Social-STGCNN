@@ -10,7 +10,7 @@ def rowConversion(row):
         label)
 
 
-def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15, labels=None):
+def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, labels=None):
     trainingData = []
     testData = []
     validationData = []
@@ -20,14 +20,13 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=15
     for row in data:
         row = rowConversion(row)
         if (labels is None or row[4] in labels):
-            if (row[0] % samplingRate == 0.0):
-                row = (row[0] / samplingRate,) + row[1:-1]
-                if (frame <= maxTrainingFrame):
-                    trainingData.append(row)
-                elif (frame <= maxTestFrame):
-                    testData.append(row)
-                else:
-                    validationData.append(row)
+            row = row[:-1]
+            if (frame <= maxTrainingFrame):
+                trainingData.append(row)
+            elif (frame <= maxTestFrame):
+                testData.append(row)
+            else:
+                validationData.append(row)
         frame += 1
     return np.asarray(trainingData), np.asarray(testData), np.asarray(validationData)
 
@@ -45,7 +44,7 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
-def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
+def createTrainingData(inputFolder, outputFolder, labels=None):
     locations = os.listdir(inputFolder)
     for location in locations:
         videos = os.listdir(os.path.join(inputFolder, location))
@@ -53,7 +52,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingData, testData, validationData = convertData(data, samplingRate=samplingRate, labels=None)
+            trainingData, testData, validationData = convertData(data, labels=labels)
 
             if (not (os.path.isdir(os.path.join(inputFolder + "Processed", location, video, "train")))):
                 os.makedirs(os.path.join(inputFolder + "Processed", location, video, "train"))
@@ -86,5 +85,5 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
 
 
 print("Converting Stanford Dataset...")
-createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=5, labels=["Biker"])
+createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", labels=["Biker"])
 print("Done")
