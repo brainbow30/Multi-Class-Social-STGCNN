@@ -24,7 +24,7 @@ class trajectoryPrediction(object):
             pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1]) == 8, pedPastTraj.items()))
         if (len(pedPastTraj) > 2):
             seq_list = []
-            for key in (list(pedPastTraj.keys())):
+            for key in (sorted(list(pedPastTraj.keys()))):
                 pedestrianSeq = pedPastTraj[key]
                 xcoords = []
                 ycoords = []

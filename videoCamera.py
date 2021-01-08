@@ -3,13 +3,14 @@ import os
 import cv2
 import numpy as np
 
+import config
 import utils
 from createAnnotations import annotations
 from trajectoryPrediction import trajectoryPrediction
 
 
 class VideoCamera(object):
-    def __init__(self):
+    def __init__(self, samplingRate):
         self.path = "bookstore/video0"
         # capturing video
         self.video = cv2.VideoCapture('videos/' + self.path + '/video.mov')
@@ -18,7 +19,7 @@ class VideoCamera(object):
         self.annotations = annotations(self.path)
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
-        self.samplingRate = 5
+        self.samplingRate = samplingRate
         self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate)
         self.predTrajectories = []
 
@@ -32,17 +33,18 @@ class VideoCamera(object):
         frameNum = int(self.video.get(cv2.CAP_PROP_POS_FRAMES))
         annotations = self.annotations.getFrameAnnotations(frameNum)
         newPedPastTraj = {}
-        keys = list(self.pedPastTraj.keys())
+        keys = sorted(list(self.pedPastTraj.keys()))
         # plot tracking circles and update past trajectories
         for annotation in annotations:
             if (displayCircles):
                 self.displayAnnotation(frame, annotation)
             if (frameNum % self.samplingRate == 0):
                 self.updatePastTraj(annotation, newPedPastTraj)
-        if (frameNum % self.samplingRate == 0):
+        if (frameNum % (self.samplingRate) == 0):
             self.pedPastTraj = newPedPastTraj
+        if (frameNum % (self.samplingRate * 12) == 0):
             # predict trajectories
-            self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj, samples=1)
+            self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj, samples=config.predSamples)
         prevFrame = None
         for framePrediction in self.predTrajectories:
             for i in range(len(framePrediction)):
