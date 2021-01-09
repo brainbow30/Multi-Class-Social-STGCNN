@@ -11,7 +11,7 @@ from trajectoryPrediction import trajectoryPrediction
 
 class VideoCamera(object):
     def __init__(self, samplingRate):
-        self.path = "bookstore/video0"
+        self.path = config.path
         # capturing video
         self.video = cv2.VideoCapture('videos/' + self.path + '/video.mov')
         self.pedPastTraj = {}
@@ -39,24 +39,34 @@ class VideoCamera(object):
             if (displayCircles):
                 self.displayAnnotation(frame, annotation)
             if (frameNum % self.samplingRate == 0):
-                self.updatePastTraj(annotation, newPedPastTraj)
+                newPedPastTraj = self.updatePastTraj(annotation, newPedPastTraj)
         if (frameNum % (self.samplingRate) == 0):
             self.pedPastTraj = newPedPastTraj
-        if (frameNum % (self.samplingRate * 12) == 0):
+        if (frameNum % (self.samplingRate * 6) == 0):
             # predict trajectories
             self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj, samples=config.predSamples)
+            keys = sorted(list(self.pedPastTraj.keys()))
         prevFrame = None
+        # view past trajectory
+        # for key in self.pedPastTraj.keys():
+        #     pastMovement = self.pedPastTraj[key]
+        #     for i in range(len(pastMovement)):
+        #         x, y = utils.centerCoord(pastMovement[i])
+        #         cv2.circle(frame, center=(int(x), int(y)), radius=3, color=self.colours[key], thickness=2)
         for framePrediction in self.predTrajectories:
             for i in range(len(framePrediction)):
                 predX, predY = framePrediction[i]
                 pos = [predX, predY]
-                y, x = utils.to_image_frame(self.H, np.array(pos))
-                cv2.circle(frame, center=(x, y), radius=3, color=self.colours[keys[i]], thickness=2)
+                x, y = utils.to_image_frame(self.H, np.array(pos))
+                # todo work out why frameprediction length can be larger than colours
+                if (i < len(keys)):
+                    cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
                 if (not (prevFrame is None)):
                     predX, predY = prevFrame[i]
                     pos = [predX, predY]
-                    y2, x2 = utils.to_image_frame(self.H, np.array(pos))
-                    cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
+                    x2, y2 = utils.to_image_frame(self.H, np.array(pos))
+                    if (i < len(keys)):
+                        cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
         ret, jpeg = cv2.imencode('.jpg', frame)
         return ret, jpeg.tobytes()
@@ -82,13 +92,14 @@ class VideoCamera(object):
 
     def updatePastTraj(self, annotation, newPedPastTraj):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
-        if (ped_id in self.pedPastTraj):
-            currentList = self.pedPastTraj[ped_id]
-            if (len(currentList) > 7):
-                newPedPastTraj[ped_id] = currentList[:7]
+        if (label == "\"Biker\""):
+            if (ped_id in self.pedPastTraj):
+                currentList = self.pedPastTraj[ped_id]
+                if (len(currentList) > 7):
+                    newPedPastTraj[ped_id] = currentList[1:]
+                else:
+                    newPedPastTraj[ped_id] = currentList
             else:
-                newPedPastTraj[ped_id] = currentList
-        else:
-            newPedPastTraj[ped_id] = []
-        newPedPastTraj[ped_id].append([x_min, y_min, x_max, y_max])
-
+                newPedPastTraj[ped_id] = []
+            newPedPastTraj[ped_id].append([x_min, y_min, x_max, y_max])
+        return newPedPastTraj
