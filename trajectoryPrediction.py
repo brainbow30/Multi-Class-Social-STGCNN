@@ -30,10 +30,10 @@ class trajectoryPrediction(object):
                 ycoords = []
                 for coords in pedestrianSeq:
                     x, y = utils.centerCoord(coords)
-
                     xcoords.append(x)
                     ycoords.append(y)
-                seq_list.append([np.array([xcoords, ycoords])])
+
+                seq_list.append([np.array([ycoords, xcoords])])
             seq_list = np.concatenate(seq_list, axis=0)
             seq_list_rel = utils.convertToRelativeSequence(seq_list)
             obs_traj = torch.from_numpy(
@@ -53,7 +53,7 @@ class trajectoryPrediction(object):
             V_pred = V_pred.squeeze()
             num_of_objs = obs_traj_rel.shape[1]
             # V_pred = V_pred[:, :num_of_objs, :]
-
+            # todo check order
             V_x = metrics.seq_to_nodes(obs_traj.data.cpu().numpy().copy())
 
             sx = torch.exp(V_pred[:, :, 2])  # sx
