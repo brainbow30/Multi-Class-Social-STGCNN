@@ -132,19 +132,18 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         data_set + 'train//',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=config.samplingRate, norm_lap_matr=True)
-
+        skip=1, norm_lap_matr=True)
     loader_train = DataLoader(
         dset_train,
         batch_size=1,  # This is irrelative to the args batch size parameter
-        shuffle=False,
+        shuffle=True,
         num_workers=0)
 
     dset_val = TrajectoryDataset(
         data_set + 'val/',
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=config.samplingRate, norm_lap_matr=True)
+        skip=1, norm_lap_matr=True)
 
     loader_val = DataLoader(
         dset_val,
@@ -227,9 +226,9 @@ if __name__ == '__main__':
                         help='learning rate')
     parser.add_argument('--lr_sh_rate', type=int, default=150,
                         help='number of steps to drop the lr')
-    parser.add_argument('--use_lrschd', action="store_true", default=False,
+    parser.add_argument('--use_lrschd', action="store_true", default=True,
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
 
-    start_training("bookstore//video0", sampling_rate=config.samplingRate, num_epochs=config.epochs)
+    start_training(config.path, sampling_rate=config.samplingRate, num_epochs=config.epochs)
