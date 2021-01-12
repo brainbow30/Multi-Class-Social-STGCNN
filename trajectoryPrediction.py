@@ -8,13 +8,16 @@ from model import social_stgcnn
 
 
 class trajectoryPrediction(object):
-    def __init__(self, path, frame_skip):
+    def __init__(self, path, frame_skip, checkpoint=None):
         self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
                                    output_feat=5, seq_len=8,
                                    kernel_size=3, pred_seq_len=12).cuda()
+        if (checkpoint is None):
+            nnPath = "checkpoint\\" + path + "-" + str(frame_skip) + "\\val_best.pth"
+        else:
+            nnPath = checkpoint
         self.model.load_state_dict(
-            torch.load(
-                "checkpoint\\" + path + "-" + str(frame_skip) + "\\val_best.pth"))
+            torch.load(nnPath))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):
@@ -32,8 +35,7 @@ class trajectoryPrediction(object):
                     x, y = utils.centerCoord(coords)
                     xcoords.append(x)
                     ycoords.append(y)
-
-                seq_list.append([np.array([ycoords, xcoords])])
+                seq_list.append([np.array([xcoords, ycoords])])
             seq_list = np.concatenate(seq_list, axis=0)
             seq_list_rel = utils.convertToRelativeSequence(seq_list)
             obs_traj = torch.from_numpy(

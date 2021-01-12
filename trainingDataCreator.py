@@ -9,8 +9,8 @@ import config
 
 def rowConversion(row):
     ped_id, x_min, y_min, x_max, y_max, frame, _, _, _, label = row
-    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (float(y_min) + float(y_max)) / 2.0, eval(
-        label)
+    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (
+                float(y_min) + float(y_max)) / 2.0, label.strip("\"")
 
 
 def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5, labels=None):
@@ -103,5 +103,5 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
 
 print("Converting Stanford Dataset...")
 createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=config.samplingRate,
-                   labels=["Biker"])
+                   labels=["Pedestrian"])
 print("Done")
