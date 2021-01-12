@@ -4,8 +4,6 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-import config
-
 
 def rowConversion(row):
     ped_id, x_min, y_min, x_max, y_max, frame, _, _, _, label = row
@@ -99,9 +97,3 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                 else:
                     print("Invalid Validation Data")
     pbar.close()
-
-
-print("Converting Stanford Dataset...")
-createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed", samplingRate=config.samplingRate,
-                   labels=["Pedestrian"])
-print("Done")

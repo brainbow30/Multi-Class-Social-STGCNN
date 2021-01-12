@@ -6,6 +6,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 import config
+import trainingDataCreator
 from metrics import *
 from model import *
 from utils import *
@@ -127,7 +128,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     # Data prep
     obs_seq_len = args.obs_seq_len
     pred_seq_len = args.pred_seq_len
-    data_set = './trainingData//stanfordProcessed//' + datasetLocation + '//'
+    data_set = './trainingData//' + datasetLocation + '//'
     dset_train = TrajectoryDataset(
         data_set + 'train//',
         obs_len=obs_seq_len,
@@ -148,7 +149,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     loader_val = DataLoader(
         dset_val,
         batch_size=1,  # This is irrelative to the args batch size parameter
-        shuffle=False,
+        shuffle=True,
         num_workers=1)
 
     # Defining the model
@@ -204,6 +205,12 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
 
 if __name__ == '__main__':
     freeze_support()
+    if (config.annotationType == "stanford"):
+        print("Converting Stanford Dataset...")
+        trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
+                                               samplingRate=config.samplingRate,
+                                               labels=["Pedestrian"])
+        print("Done")
     parser = argparse.ArgumentParser()
 
     # Model specific parameters
@@ -230,5 +237,8 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-
-    start_training(config.path, sampling_rate=config.samplingRate, num_epochs=config.epochs)
+    if (config.annotationType):
+        path = "stanfordProcessed//" + config.path
+    else:
+        path = config.path
+    start_training(path, sampling_rate=config.samplingRate, num_epochs=config.epochs)

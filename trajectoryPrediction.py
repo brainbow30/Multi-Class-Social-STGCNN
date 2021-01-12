@@ -15,7 +15,7 @@ class trajectoryPrediction(object):
         if (checkpoint is None):
             nnPath = "checkpoint\\" + path + "-" + str(frame_skip) + "\\val_best.pth"
         else:
-            nnPath = checkpoint
+            nnPath = checkpoint + "val_best.pth"
         self.model.load_state_dict(
             torch.load(nnPath))
         self.model.cuda()
