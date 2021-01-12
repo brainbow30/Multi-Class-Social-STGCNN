@@ -237,7 +237,7 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-    if (config.annotationType):
+    if (config.annotationType == "stanford"):
         path = "stanfordProcessed//" + config.path
     else:
         path = config.path
