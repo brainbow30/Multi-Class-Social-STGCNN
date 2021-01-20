@@ -128,9 +128,9 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     # Data prep
     obs_seq_len = args.obs_seq_len
     pred_seq_len = args.pred_seq_len
-    data_set = './trainingData//' + datasetLocation + '//'
+    data_set = os.path.join('trainingData', datasetLocation)
     dset_train = TrajectoryDataset(
-        data_set + 'train//',
+        os.path.join(data_set, 'train'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
         skip=1, norm_lap_matr=True)
@@ -141,7 +141,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         num_workers=0)
 
     dset_val = TrajectoryDataset(
-        data_set + 'val/',
+        os.path.join(data_set, 'val'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
         skip=1, norm_lap_matr=True)
@@ -165,8 +165,14 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     if args.use_lrschd:
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_sh_rate, gamma=0.2)
 
-    checkpoint_dir = './checkpoint/' + checkpointLocation + '/'
-
+    checkpoint_dir = os.path.join('checkpoint', checkpointLocation)
+    checkpoint_labels = ""
+    for i in range(len(config.labels)):
+        if (i == 0):
+            checkpoint_labels += config.labels[i]
+        else:
+            checkpoint_labels += ("-" + config.labels[i])
+    checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 

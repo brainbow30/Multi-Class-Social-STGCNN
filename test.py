@@ -122,7 +122,7 @@ def test(KSTEPS=20):
 def main():
     global loader_test, model
     if (config.checkpoint is None):
-        path = './checkpoint/' + config.path + "-" + str(config.samplingRate) + '/'
+        path = os.path.join('checkpoint', config.path + "-" + str(config.samplingRate))
     else:
         path = config.checkpoint
     KSTEPS = 20
@@ -140,12 +140,12 @@ def main():
         print("*" * 50)
         print("Evaluating model:", exp_path)
 
-        model_path = exp_path + '/val_best.pth'
-        args_path = exp_path + '/args.pkl'
+        model_path = os.path.join(exp_path, '/val_best.pth')
+        args_path = os.path.join(exp_path, '/args.pkl')
         with open(args_path, 'rb') as f:
             args = pickle.load(f)
 
-        stats = exp_path + '/constant_metrics.pkl'
+        stats = os.path.join(exp_path, 'constant_metrics.pkl')
         with open(stats, 'rb') as f:
             cm = pickle.load(f)
         print("Stats:", cm)
@@ -153,10 +153,10 @@ def main():
         # Data prep
         obs_seq_len = args.obs_seq_len
         pred_seq_len = args.pred_seq_len
-        data_set = './trainingData/' + config.path + '/'
+        data_set = os.path.join('trainingData', config.path)
 
         dset_test = TrajectoryDataset(
-            data_set + 'test/',
+            os.path.join(data_set, 'test'),
             obs_len=obs_seq_len,
             pred_len=pred_seq_len,
             skip=1, norm_lap_matr=True)
