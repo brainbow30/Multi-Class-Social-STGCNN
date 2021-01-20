@@ -47,7 +47,7 @@ class VideoCamera(object):
                 newPedPastTraj = self.updatePastTraj(annotation, newPedPastTraj)
         if (newAnnotations and frameNum % (self.samplingRate) == 0):
             self.pedPastTraj = newPedPastTraj
-        if (frameNum % (self.samplingRate * 6) == 0):
+        if (frameNum % (self.samplingRate * 12) == 0):
             # predict trajectories
             self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj.copy(),
                                                                       samples=config.predSamples)

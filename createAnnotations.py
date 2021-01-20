@@ -11,7 +11,7 @@ class annotations(object):
 
     def loadAnnotations(self):
         annotations = open(
-            'annotations/' + self.path + '/annotations.txt', 'r')
+            './annotations/' + self.path + '/annotations.txt', 'r')
         Lines = annotations.readlines()
         annotationsByFrame = {}
         for line in Lines:

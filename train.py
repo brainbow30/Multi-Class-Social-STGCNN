@@ -48,7 +48,7 @@ def train(model, epoch, optimizer, trainingData, metrics):
                 loss = l
                 is_fst_loss = False
             else:
-                loss += l
+                loss = l + loss
 
         else:
             loss = loss / args.batch_size
@@ -60,7 +60,7 @@ def train(model, epoch, optimizer, trainingData, metrics):
 
             optimizer.step()
             # Metrics
-            loss_batch += loss.item()
+            loss_batch = loss.item() + loss_batch
             print('TRAIN:', '\t Epoch:', epoch, '\t Loss:', loss_batch / batch_count)
 
     metrics['train_loss'].append(loss_batch / batch_count)
@@ -98,13 +98,13 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
                 loss = l
                 is_fst_loss = False
             else:
-                loss += l
+                loss = l + loss
 
         else:
             loss = loss / args.batch_size
             is_fst_loss = True
             # Metrics
-            loss_batch += loss.item()
+            loss_batch = loss.item() + loss_batch
             print('VALD:', '\t Epoch:', epoch, '\t Loss:', loss_batch / batch_count)
 
     metrics['val_loss'].append(loss_batch / batch_count)
@@ -209,7 +209,7 @@ if __name__ == '__main__':
         print("Converting Stanford Dataset...")
         trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
                                                samplingRate=config.samplingRate,
-                                               labels=["Pedestrian"])
+                                               labels=config.labels)
         print("Done")
     parser = argparse.ArgumentParser()
 
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     parser.add_argument('--pred_seq_len', type=int, default=12)
 
     # Training specifc parameters
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=512,
                         help='minibatch size')
     parser.add_argument('--clip_grad', type=float, default=None,
                         help='gadient clipping')
@@ -237,8 +237,4 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-    if (config.annotationType == "stanford"):
-        path = "stanfordProcessed//" + config.path
-    else:
-        path = config.path
-    start_training(path, sampling_rate=config.samplingRate, num_epochs=config.epochs)
+    start_training(config.path, sampling_rate=config.samplingRate, num_epochs=config.epochs)

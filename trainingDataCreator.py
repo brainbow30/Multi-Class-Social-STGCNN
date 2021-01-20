@@ -4,12 +4,18 @@ import os
 import numpy as np
 from tqdm import tqdm
 
+import config
+
 
 def rowConversion(row):
     ped_id, x_min, y_min, x_max, y_max, frame, _, _, _, label = row
-    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (
-                float(y_min) + float(y_max)) / 2.0, label.strip("\"")
+    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / (2.0), (
+            float(y_min) + float(y_max)) / (2.0), label.strip("\"")
 
+
+def scaleCoordinates(row):
+    frame, ped_id, x, y = row
+    return float(frame), float(ped_id), x / config.annotationScale, y / config.annotationScale
 
 def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5, labels=None):
     trainingData = {}
@@ -27,7 +33,7 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
         if (labels is None or row[4] in labels):
             row = (math.floor(row[0] / samplingRate),) + row[1:-1]
             if (frame <= maxTrainingFrame):
-                trainingData[frame % samplingRate].append(row)
+                trainingData[frame % samplingRate].append(scaleCoordinates(row))
             elif (frame <= maxTestFrame):
                 testData[frame % samplingRate].append(row)
             else:

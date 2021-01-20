@@ -1,7 +1,10 @@
+import os
+
 import numpy as np
 import torch
 import torch.distributions.multivariate_normal as torchdist
 
+import config
 import metrics
 import utils
 from model import social_stgcnn
@@ -15,12 +18,13 @@ class trajectoryPrediction(object):
         if (checkpoint is None):
             nnPath = "checkpoint\\" + path + "-" + str(frame_skip) + "\\val_best.pth"
         else:
-            nnPath = checkpoint + "val_best.pth"
+            nnPath = os.path.join(checkpoint, "val_best.pth")
         self.model.load_state_dict(
             torch.load(nnPath))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):
+
         if (keys is None):
             pedPastTraj = dict(filter(lambda elem: len(elem[1]) == 8, pedPastTraj.items()))
         else:
@@ -50,7 +54,9 @@ class trajectoryPrediction(object):
             A_obs.append(a_.clone())
             V_obs = torch.stack(V_obs).cuda()
             A_obs = torch.stack(A_obs).cuda()
-            V_pred, _ = self.model(V_obs.permute(0, 3, 1, 2), A_obs.squeeze())
+            V_obs_tmp = V_obs.permute(0, 3, 1, 2)
+            V_obs_tmp = torch.div(V_obs_tmp, config.annotationScale)
+            V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze())
             V_pred = V_pred.permute(0, 2, 3, 1)
             V_pred = V_pred.squeeze()
             num_of_objs = obs_traj_rel.shape[1]
@@ -76,6 +82,7 @@ class trajectoryPrediction(object):
             # take multiple samples and average
             for i in range(samples):
                 V_pred = mvnormal.sample()
+                V_pred = torch.mul(V_pred, config.annotationScale)
                 # take predictions and add the pedestrians start pos to find actual position
                 trajectories.append(metrics.nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
                                                                    V_x[-1, :, :].copy()))
