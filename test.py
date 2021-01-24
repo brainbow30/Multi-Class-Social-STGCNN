@@ -7,6 +7,7 @@ import torch.distributions.multivariate_normal as torchdist
 from torch.utils.data import DataLoader
 
 import config
+import trainingDataCreator
 from metrics import *
 from model import social_stgcnn
 from utils import *
@@ -111,18 +112,32 @@ def test(KSTEPS=20):
                 fde_ls[n].append(fde(pred, target, number_of))
 
         for n in range(num_of_objs):
-            ade_bigls.append(min(ade_ls[n]))
-            fde_bigls.append(min(fde_ls[n]))
+            # todo mean vs min
+            ade_bigls.append(np.mean(ade_ls[n]))
+            fde_bigls.append(np.mean(fde_ls[n]))
 
     ade_ = sum(ade_bigls) / len(ade_bigls)
     fde_ = sum(fde_bigls) / len(fde_bigls)
     return ade_, fde_, raw_data_dict
 
 
+#todo error per class
 def main():
     global loader_test, model
+    if config.annotationType == "stanford":
+        trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
+                                               samplingRate=config.samplingRate,
+                                               labels=config.labels)
     if (config.checkpoint is None):
         path = os.path.join('checkpoint', config.path + "-" + str(config.samplingRate))
+        if not (config.labels is None):
+            checkpoint_labels = ""
+            for i in range(len(config.labels)):
+                if (i == 0):
+                    checkpoint_labels += config.labels[i]
+                else:
+                    checkpoint_labels += ("-" + config.labels[i])
+            path = os.path.join(path, checkpoint_labels)
     else:
         path = config.checkpoint
     KSTEPS = 20
@@ -131,8 +146,6 @@ def main():
     print('Number of samples:', KSTEPS)
     print("*" * 50)
 
-    ade_ls = []
-    fde_ls = []
     exps = glob.glob(path)
     print('Model being tested are:', exps)
 
@@ -140,8 +153,8 @@ def main():
         print("*" * 50)
         print("Evaluating model:", exp_path)
 
-        model_path = os.path.join(exp_path, '/val_best.pth')
-        args_path = os.path.join(exp_path, '/args.pkl')
+        model_path = os.path.join(exp_path, 'val_best.pth')
+        args_path = os.path.join(exp_path, 'args.pkl')
         with open(args_path, 'rb') as f:
             args = pickle.load(f)
 
@@ -174,15 +187,9 @@ def main():
         model.load_state_dict(torch.load(model_path))
         model.cuda()
 
-        ade_ = 999999
-        fde_ = 999999
         print("Testing ....")
         ad, fd, raw_data_dic_ = test()
-        ade_ = min(ade_, ad)
-        fde_ = min(fde_, fd)
-        ade_ls.append(ade_)
-        fde_ls.append(fde_)
-        print("ADE:", ade_, " FDE:", fde_)
+        print("ADE:", ad, " FDE:", fd)
 
 
 if __name__ == '__main__':
