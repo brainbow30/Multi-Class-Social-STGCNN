@@ -15,7 +15,7 @@ def rowConversion(row):
 
 def scaleCoordinates(row):
     frame, ped_id, x, y = row
-    return float(frame), float(ped_id), x / config.annotationScale, y / config.annotationScale
+    return float(frame), float(ped_id), float(x / config.annotationScale), float(y / config.annotationScale)
 
 def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5, labels=None):
     trainingData = {}
@@ -24,12 +24,19 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
     maxTrainingFrame = int(math.floor(len(data) * trainingTestSplit))
     maxTestFrame = maxTrainingFrame + int(math.floor(len(data) * (1 - trainingTestSplit) * testValidSplit))
     frame = 0
+    maxX = 0
+    maxY = 0
     for i in range(samplingRate):
         trainingData[i] = []
         testData[i] = []
         validationData[i] = []
     for row in data:
         row = rowConversion(row)
+        if (row[2] > maxX):
+            maxX = row[2]
+        if (row[3] > maxY):
+            maxY = row[3]
+
         if (labels is None or row[4] in labels):
             row = (math.floor(row[0] / samplingRate),) + row[1:-1]
             if (frame <= maxTrainingFrame):
@@ -37,8 +44,24 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
             elif (frame <= maxTestFrame):
                 testData[frame % samplingRate].append(row)
             else:
-                validationData[frame % samplingRate].append(row)
+                validationData[frame % samplingRate].append(scaleCoordinates(row))
         frame += 1
+    # take middle 90% of image to train, test and validate on it
+    for i in range(samplingRate):
+        trainingData[i] = list(filter(lambda row: ((row[2] >= (
+                    maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                    config.annotationScale * config.fractionToRemove))) and (row[3] >= (
+                    maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                    maxY / (config.annotationScale * config.fractionToRemove))))), trainingData[i]))
+        testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
+                    maxX - (maxX / config.fractionToRemove))) and (
+                                                           row[3] >= (maxY / config.fractionToRemove) and row[3] <= (
+                                                               maxY - (maxY / config.fractionToRemove)))), testData[i]))
+        validationData[i] = list(filter(lambda row: ((row[2] >= (
+                    maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                    config.annotationScale * config.fractionToRemove))) and (row[3] >= (
+                    maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                    maxY / (config.annotationScale * config.fractionToRemove))))), validationData[i]))
     return trainingData, testData, validationData
 
 
@@ -55,6 +78,7 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
+#todo create file showing current training data settings
 def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
@@ -67,7 +91,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
 
             trainingDataDict, testDataDict, validationDataDict = convertData(data, samplingRate=samplingRate,
                                                                              labels=labels)
-
             if (not (os.path.isdir(os.path.join(outputFolder, location, video, "train")))):
                 os.makedirs(os.path.join(outputFolder, location, video, "train"))
             if (not (os.path.isdir(os.path.join(outputFolder, location, video, "test")))):
