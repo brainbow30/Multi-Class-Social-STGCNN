@@ -160,6 +160,7 @@ class social_stgcnn(nn.Module):
             self.tpcnns.append(nn.Conv2d(pred_seq_len, pred_seq_len, 3, padding=1))
         self.tpcnn_ouput = nn.Conv2d(pred_seq_len, pred_seq_len, 3, padding=1)
 
+        # todo investigate swish
         self.prelus = nn.ModuleList()
         for j in range(self.n_txpcnn):
             self.prelus.append(nn.PReLU())

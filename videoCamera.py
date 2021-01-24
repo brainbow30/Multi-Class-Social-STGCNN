@@ -37,7 +37,7 @@ class VideoCamera(object):
         except KeyError:
             newAnnotations = False
         newPedPastTraj = {}
-        keys = sorted(list(self.pedPastTraj.keys()))
+        keys = (list(self.pedPastTraj.keys()))
         # plot tracking circles and update past trajectories
 
         for annotation in self.currentAnnotations:
@@ -51,7 +51,7 @@ class VideoCamera(object):
             # predict trajectories
             self.predTrajectories = self.trajectoryPrediction.predict(self.pedPastTraj.copy(),
                                                                       samples=config.predSamples)
-            keys = sorted(list(self.pedPastTraj.keys()))
+            keys = (list(self.pedPastTraj.keys()))
         prevFrame = None
         # view past trajectory
         # for key in self.pedPastTraj.keys():
@@ -95,7 +95,7 @@ class VideoCamera(object):
 
     def updatePastTraj(self, annotation, newPedPastTraj):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
-        if (label.strip("\"") in config.labels):
+        if (config.labels is None or label.strip("\"") in config.labels):
             if (ped_id in self.pedPastTraj):
                 currentList = self.pedPastTraj[ped_id]
                 if (len(currentList) > 7):

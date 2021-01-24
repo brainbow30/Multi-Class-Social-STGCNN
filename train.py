@@ -112,7 +112,7 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
     if metrics['val_loss'][-1] < constant_metrics['min_val_loss']:
         constant_metrics['min_val_loss'] = metrics['val_loss'][-1]
         constant_metrics['min_val_epoch'] = epoch
-        torch.save(model.state_dict(), checkpoint_dir + 'val_best.pth')  # OK
+        torch.save(model.state_dict(), os.path.join(checkpoint_dir, 'val_best.pth'))  # OK
 
 
 def graph_loss(V_pred, V_target):
@@ -166,17 +166,18 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_sh_rate, gamma=0.2)
 
     checkpoint_dir = os.path.join('checkpoint', checkpointLocation)
-    checkpoint_labels = ""
-    for i in range(len(config.labels)):
-        if (i == 0):
-            checkpoint_labels += config.labels[i]
-        else:
-            checkpoint_labels += ("-" + config.labels[i])
-    checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
+    if not (config.labels is None):
+        checkpoint_labels = ""
+        for i in range(len(config.labels)):
+            if (i == 0):
+                checkpoint_labels += config.labels[i]
+            else:
+                checkpoint_labels += ("-" + config.labels[i])
+        checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    with open(checkpoint_dir + 'args.pkl', 'wb') as fp:
+    with open(os.path.join(checkpoint_dir, 'args.pkl'), 'wb') as fp:
         pickle.dump(args, fp)
 
     print('Data and model loaded')
@@ -202,10 +203,10 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         print(constant_metrics)
         print('*' * 30)
 
-        with open(checkpoint_dir + 'metrics.pkl', 'wb') as fp:
+        with open(os.path.join(checkpoint_dir, 'metrics.pkl'), 'wb') as fp:
             pickle.dump(metrics, fp)
 
-        with open(checkpoint_dir + 'constant_metrics.pkl', 'wb') as fp:
+        with open(os.path.join(checkpoint_dir, 'constant_metrics.pkl'), 'wb') as fp:
             pickle.dump(constant_metrics, fp)
 
 

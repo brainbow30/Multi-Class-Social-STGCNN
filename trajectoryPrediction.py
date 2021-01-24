@@ -17,11 +17,12 @@ class trajectoryPrediction(object):
                                    kernel_size=3, pred_seq_len=12).cuda()
         if (checkpoint is None):
             checkpoint_labels = ""
-            for i in range(len(config.labels)):
-                if (i == 0):
-                    checkpoint_labels += config.labels[i]
-                else:
-                    checkpoint_labels += ("-" + config.labels[i])
+            if not (config.labels is None):
+                for i in range(len(config.labels)):
+                    if (i == 0):
+                        checkpoint_labels += config.labels[i]
+                    else:
+                        checkpoint_labels += ("-" + config.labels[i])
             nnPath = os.path.join("checkpoint", path + "-" + str(samplingRate), checkpoint_labels, "val_best.pth")
         else:
             nnPath = os.path.join(checkpoint, "val_best.pth")
@@ -37,7 +38,7 @@ class trajectoryPrediction(object):
             pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1]) == 8, pedPastTraj.items()))
         if (len(pedPastTraj) > 2):
             seq_list = []
-            for key in (sorted(list(pedPastTraj.keys()))):
+            for key in (list(pedPastTraj.keys())):
                 pedestrianSeq = pedPastTraj[key]
                 xcoords = []
                 ycoords = []
@@ -65,9 +66,8 @@ class trajectoryPrediction(object):
             V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze())
             V_pred = V_pred.permute(0, 2, 3, 1)
             V_pred = V_pred.squeeze()
-            num_of_objs = obs_traj_rel.shape[1]
-            # V_pred = V_pred[:, :num_of_objs, :]
-            # todo check order
+            num_of_objs = obs_traj_rel.shape[0]
+            V_pred = V_pred[:, :num_of_objs, :]
             V_x = metrics.seq_to_nodes(obs_traj.data.cpu().numpy().copy())
 
             sx = torch.exp(V_pred[:, :, 2])  # sx
