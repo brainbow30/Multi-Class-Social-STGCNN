@@ -17,6 +17,7 @@ def scaleCoordinates(row):
     frame, ped_id, x, y = row
     return float(frame), float(ped_id), float(x / config.annotationScale), float(y / config.annotationScale)
 
+
 def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5, labels=None):
     trainingData = {}
     testData = {}
@@ -26,9 +27,15 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
     frame = 0
     maxX = 0
     maxY = 0
+    for label in labels:
+        testData[label] = {}
     for i in range(samplingRate):
         trainingData[i] = []
-        testData[i] = []
+        if not (labels is None):
+            for label in labels:
+                testData[label][i] = []
+        else:
+            testData[i] = []
         validationData[i] = []
     for row in data:
         row = rowConversion(row)
@@ -38,30 +45,44 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
             maxY = row[3]
 
         if (labels is None or row[4] in labels):
+            label = row[-1]
             row = (math.floor(row[0] / samplingRate),) + row[1:-1]
             if (frame <= maxTrainingFrame):
                 trainingData[frame % samplingRate].append(scaleCoordinates(row))
             elif (frame <= maxTestFrame):
-                testData[frame % samplingRate].append(row)
+                if not (labels is None):
+                    testData[label][frame % samplingRate].append(row)
+                else:
+                    testData[frame % samplingRate].append(row)
             else:
                 validationData[frame % samplingRate].append(scaleCoordinates(row))
         frame += 1
     # take middle 90% of image to train, test and validate on it
     for i in range(samplingRate):
         trainingData[i] = list(filter(lambda row: ((row[2] >= (
-                    maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                    config.annotationScale * config.fractionToRemove))) and (row[3] >= (
-                    maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                    maxY / (config.annotationScale * config.fractionToRemove))))), trainingData[i]))
-        testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
+                maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                config.annotationScale * config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.annotationScale * config.fractionToRemove))))), trainingData[i]))
+        if (labels is None):
+            testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
                     maxX - (maxX / config.fractionToRemove))) and (
                                                            row[3] >= (maxY / config.fractionToRemove) and row[3] <= (
-                                                               maxY - (maxY / config.fractionToRemove)))), testData[i]))
+                                                           maxY - (maxY / config.fractionToRemove)))), testData[i]))
+        else:
+            for label in labels:
+                testData[label][i] = list(
+                    filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
+                            maxX - (maxX / config.fractionToRemove))) and (
+                                                row[3] >= (maxY / config.fractionToRemove) and row[
+                                            3] <= (
+                                                        maxY - (maxY / config.fractionToRemove)))),
+                           testData[label][i]))
         validationData[i] = list(filter(lambda row: ((row[2] >= (
-                    maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                    config.annotationScale * config.fractionToRemove))) and (row[3] >= (
-                    maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                    maxY / (config.annotationScale * config.fractionToRemove))))), validationData[i]))
+                maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                config.annotationScale * config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.annotationScale * config.fractionToRemove))))), validationData[i]))
     return trainingData, testData, validationData
 
 
@@ -78,7 +99,7 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
-#todo create file showing current training data settings
+# todo create file showing current training data settings
 def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
@@ -99,7 +120,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                 os.makedirs(os.path.join(outputFolder, location, video, "val"))
             for i in range(samplingRate):
                 trainingData = np.asarray(trainingDataDict[i])
-                testData = np.asarray(testDataDict[i])
                 validationData = np.asarray(validationDataDict[i])
                 if (not np.any(np.isnan(trainingData))):
                     np.savetxt(
@@ -109,14 +129,30 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                         encoding=None)
                 else:
                     print("Invalid Training Data")
-                if (not np.any(np.isnan(testData))):
-                    np.savetxt(
-                        os.path.join(outputFolder, location, video, "test",
-                                     "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
-                        testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                        encoding=None)
+                if not (labels is None):
+                    for label in labels:
+                        if (not (os.path.isdir(os.path.join(outputFolder, location, video, "test", label)))):
+                            os.makedirs(os.path.join(outputFolder, location, video, "test", label))
+                        testData = np.asarray(testDataDict[label][i])
+                        if (not np.any(np.isnan(testData))):
+                            np.savetxt(
+                                os.path.join(outputFolder, location, video, "test", label,
+                                             "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
+                                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                                encoding=None)
+                        else:
+                            print("Invalid Test Data")
                 else:
-                    print("Invalid Test Data")
+                    testData = np.asarray(testDataDict[i])
+
+                    if (not np.any(np.isnan(testData))):
+                        np.savetxt(
+                            os.path.join(outputFolder, location, video, "test",
+                                         "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
+                            testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                            encoding=None)
+                    else:
+                        print("Invalid Test Data")
                 if (not np.any(np.isnan(validationData))):
                     np.savetxt(
                         os.path.join(outputFolder, location, video, "val",

@@ -121,7 +121,6 @@ def test(KSTEPS=20):
     return ade_, fde_, raw_data_dict
 
 
-#todo error per class
 def main():
     global loader_test, model
     if config.annotationType == "stanford":
@@ -148,48 +147,48 @@ def main():
 
     exps = glob.glob(path)
     print('Model being tested are:', exps)
+    for label in config.labels:
+        for exp_path in exps:
+            print("*" * 50)
+            print("Evaluating model:", exp_path)
 
-    for exp_path in exps:
-        print("*" * 50)
-        print("Evaluating model:", exp_path)
+            model_path = os.path.join(exp_path, 'val_best.pth')
+            args_path = os.path.join(exp_path, 'args.pkl')
+            with open(args_path, 'rb') as f:
+                args = pickle.load(f)
 
-        model_path = os.path.join(exp_path, 'val_best.pth')
-        args_path = os.path.join(exp_path, 'args.pkl')
-        with open(args_path, 'rb') as f:
-            args = pickle.load(f)
+            stats = os.path.join(exp_path, 'constant_metrics.pkl')
+            with open(stats, 'rb') as f:
+                cm = pickle.load(f)
+            print("Stats:", cm)
 
-        stats = os.path.join(exp_path, 'constant_metrics.pkl')
-        with open(stats, 'rb') as f:
-            cm = pickle.load(f)
-        print("Stats:", cm)
+            # Data prep
+            obs_seq_len = args.obs_seq_len
+            pred_seq_len = args.pred_seq_len
+            data_set = os.path.join('trainingData', config.path)
 
-        # Data prep
-        obs_seq_len = args.obs_seq_len
-        pred_seq_len = args.pred_seq_len
-        data_set = os.path.join('trainingData', config.path)
+            dset_test = TrajectoryDataset(
+                os.path.join(data_set, 'test', label),
+                obs_len=obs_seq_len,
+                pred_len=pred_seq_len,
+                skip=1, norm_lap_matr=True)
 
-        dset_test = TrajectoryDataset(
-            os.path.join(data_set, 'test'),
-            obs_len=obs_seq_len,
-            pred_len=pred_seq_len,
-            skip=1, norm_lap_matr=True)
+            loader_test = DataLoader(
+                dset_test,
+                batch_size=1,  # This is irrelative to the args batch size parameter
+                shuffle=False,
+                num_workers=1)
 
-        loader_test = DataLoader(
-            dset_test,
-            batch_size=1,  # This is irrelative to the args batch size parameter
-            shuffle=False,
-            num_workers=1)
+            # Defining the model
+            model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                                  output_feat=args.output_size, seq_len=args.obs_seq_len,
+                                  kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
+            model.load_state_dict(torch.load(model_path))
+            model.cuda()
 
-        # Defining the model
-        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                              output_feat=args.output_size, seq_len=args.obs_seq_len,
-                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
-        model.load_state_dict(torch.load(model_path))
-        model.cuda()
-
-        print("Testing ....")
-        ad, fd, raw_data_dic_ = test()
-        print("ADE:", ad, " FDE:", fd)
+            print(label + " Testing ....")
+            ad, fd, raw_data_dic_ = test()
+            print("ADE:", ad, " FDE:", fd)
 
 
 if __name__ == '__main__':
