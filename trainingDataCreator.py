@@ -1,3 +1,4 @@
+import json
 import math
 import os
 
@@ -99,8 +100,24 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
-# todo create file showing current training data settings
 def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
+    new_config = {"samplingRate": config.samplingRate,
+                  "labels": labels,
+                  "inputFolder": inputFolder,
+                  "outputFolder": outputFolder,
+                  "annotationScale": config.annotationScale,
+                  "fractionToRemove": config.fractionToRemove,
+                  "annotationType": config.annotationType,
+                  "complete": False
+                  }
+    with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
+        old_config = json.load(f)
+    new_config["complete"] = True
+    if (new_config == old_config):
+        print("No new config, skipping data creation")
+        return
+    with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
+        json.dump(new_config, json_file)
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
     for location in locations:
@@ -162,3 +179,5 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                 else:
                     print("Invalid Validation Data")
     pbar.close()
+    with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
+        json.dump(new_config, json_file)
