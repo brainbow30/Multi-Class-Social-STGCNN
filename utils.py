@@ -37,7 +37,7 @@ def centerCoord(coordArray):
 
 def convertToRelativeSequence(sequence):
     rel_curr_ped_seq = np.zeros(sequence.shape)
-    rel_curr_ped_seq[:, :, 1:] = sequence[:, :, 1:] - [sequence[:, :, :1]]
+    rel_curr_ped_seq[:, :, 1:] = sequence[:, :, 1:] - [sequence[:, :, :-1]]
     return rel_curr_ped_seq
 
 
@@ -175,8 +175,8 @@ class TrajectoryDataset(Dataset):
                     curr_ped_seq = curr_ped_seq
                     # Make coordinates relative
                     rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
-                    rel_curr_ped_seq[:, 1:] = \
-                        curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
+                    rel_curr_ped_seq[:, 1:] = curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
+                    # todo why needed
                     if (curr_ped_seq.shape[1] != self.seq_len):
                         continue
                     _idx = num_peds_considered
