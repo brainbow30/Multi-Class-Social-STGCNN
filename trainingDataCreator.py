@@ -19,12 +19,12 @@ def scaleCoordinates(row):
     return float(frame), float(ped_id), float(x / config.annotationScale), float(y / config.annotationScale)
 
 
-def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5, labels=None):
+def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=None):
     trainingData = {}
     testData = {}
     validationData = {}
-    maxTrainingFrame = int(math.floor(len(data) * trainingTestSplit))
-    maxTestFrame = maxTrainingFrame + int(math.floor(len(data) * (1 - trainingTestSplit) * testValidSplit))
+    maxTestFrame = int(math.floor(len(data) * testSplit))
+    maxValidFrame = maxTestFrame + int(math.floor(len(data) * validSplit))
     frame = 0
     maxX = 0
     maxY = 0
@@ -48,15 +48,16 @@ def convertData(data, trainingTestSplit=0.7, testValidSplit=0.5, samplingRate=5,
         if (labels is None or row[4] in labels):
             label = row[-1]
             row = (math.floor(row[0] / samplingRate),) + row[1:-1]
-            if (frame <= maxTrainingFrame):
-                trainingData[frame % samplingRate].append(scaleCoordinates(row))
-            elif (frame <= maxTestFrame):
+            if (frame <= maxTestFrame):
                 if not (labels is None):
                     testData[label][frame % samplingRate].append(row)
                 else:
                     testData[frame % samplingRate].append(row)
-            else:
+            elif (frame <= maxValidFrame):
                 validationData[frame % samplingRate].append(scaleCoordinates(row))
+            else:
+                trainingData[frame % samplingRate].append(scaleCoordinates(row))
+
         frame += 1
     # take middle 90% of image to train, test and validate on it
     for i in range(samplingRate):
@@ -110,14 +111,16 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                   "annotationType": config.annotationType,
                   "complete": False
                   }
-    with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
-        old_config = json.load(f)
-    new_config["complete"] = True
-    if (new_config == old_config):
-        print("No new config, skipping data creation")
-        return
+    if (os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json'))):
+        with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
+            old_config = json.load(f)
+        new_config["complete"] = True
+        if (new_config == old_config):
+            print("No new config, skipping data creation")
+            return
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)
+    print("Converting Data...")
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
     for location in locations:
