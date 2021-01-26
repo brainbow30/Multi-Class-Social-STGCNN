@@ -37,8 +37,7 @@ def centerCoord(coordArray):
 
 def convertToRelativeSequence(sequence):
     rel_curr_ped_seq = np.zeros(sequence.shape)
-    rel_curr_ped_seq[:, 1:] = \
-        sequence[:, 1:] - sequence[:, :-1]
+    rel_curr_ped_seq[:, :, 1:] = sequence[:, :, 1:] - [sequence[:, :, :1]]
     return rel_curr_ped_seq
 
 
