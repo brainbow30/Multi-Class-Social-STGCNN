@@ -64,21 +64,19 @@ class VideoCamera(object):
                 predX, predY = framePrediction[i]
                 pos = [predX, predY]
                 y, x = utils.to_image_frame(self.H, np.array(pos))
-                # todo work out why frameprediction length can be larger than colours
-                if (i < len(keys)):
-                    cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
+                cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
                 if (not (prevFrame is None)):
                     predX, predY = prevFrame[i]
                     pos = [predX, predY]
                     y2, x2 = utils.to_image_frame(self.H, np.array(pos))
-                    if (i < len(keys)):
-                        cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
+                    cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
         ret, jpeg = cv2.imencode('.jpg', frame)
         return ret, jpeg.tobytes()
 
     def displayAnnotation(self, frame, annotation):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
+        ped_id = int(ped_id)
         min_coords = np.array([x_min, y_min])
         max_coords = np.array([x_max, y_max])
         y_min, x_min = utils.to_image_frame(self.H, min_coords)
@@ -95,6 +93,7 @@ class VideoCamera(object):
 
     def updatePastTraj(self, annotation, newPedPastTraj):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
+        ped_id = int(ped_id)
         if (config.labels is None or label.strip("\"") in config.labels):
             if (ped_id in self.pedPastTraj):
                 currentList = self.pedPastTraj[ped_id]
