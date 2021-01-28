@@ -109,7 +109,7 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
 
     metrics['val_loss'].append(loss_batch / batch_count)
 
-    if metrics['val_loss'][-1] < constant_metrics['min_val_loss']:
+    if abs(metrics['val_loss'][-1]) < abs(constant_metrics['min_val_loss']):
         constant_metrics['min_val_loss'] = metrics['val_loss'][-1]
         constant_metrics['min_val_epoch'] = epoch
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, 'val_best.pth'))  # OK
@@ -159,7 +159,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
                           kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
 
     # Training settings
-
+    # todo sgd vs adam
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
     if args.use_lrschd:
