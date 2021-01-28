@@ -16,7 +16,7 @@ def rowConversion(row):
 
 def scaleCoordinates(row):
     frame, ped_id, x, y = row
-    return float(frame), float(ped_id), float(x / config.annotationScale), float(y / config.annotationScale)
+    return float(frame), float(ped_id), float(x / config.annotationXScale), float(y / config.annotationYScale)
 
 
 def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=None):
@@ -62,10 +62,10 @@ def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=No
     # take middle 90% of image to train, test and validate on it
     for i in range(samplingRate):
         trainingData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                config.annotationScale * config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.annotationScale * config.fractionToRemove))))), trainingData[i]))
+                maxX / (config.annotationXScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                config.annotationXScale * config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.annotationYScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.annotationYScale * config.fractionToRemove))))), trainingData[i]))
         if (labels is None):
             testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
                     maxX - (maxX / config.fractionToRemove))) and (
@@ -81,10 +81,10 @@ def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=No
                                                         maxY - (maxY / config.fractionToRemove)))),
                            testData[label][i]))
         validationData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.annotationScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                config.annotationScale * config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.annotationScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.annotationScale * config.fractionToRemove))))), validationData[i]))
+                maxX / (config.annotationXScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+                config.annotationXScale * config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.annotationYScale * config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.annotationYScale * config.fractionToRemove))))), validationData[i]))
     return trainingData, testData, validationData
 
 
@@ -106,7 +106,8 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                   "labels": labels,
                   "inputFolder": inputFolder,
                   "outputFolder": outputFolder,
-                  "annotationScale": config.annotationScale,
+                  "annotationXScale": config.annotationXScale,
+                  "annotationYScale": config.annotationYScale,
                   "fractionToRemove": config.fractionToRemove,
                   "annotationType": config.annotationType,
                   "complete": False
@@ -114,13 +115,19 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     if (os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json'))):
         with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
             old_config = json.load(f)
+        # check if config is the same and creation completed
         new_config["complete"] = True
         if (new_config == old_config):
             print("No new config, skipping data creation")
             return
-    with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
-        json.dump(new_config, json_file)
+        # write json showing data is incomplete
+        new_config["complete"] = False
+        with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
+            json.dump(new_config, json_file)
     print("Converting Data...")
+    # delete any current data in output folder
+    if (os.path.exists(outputFolder)):
+        os.removedirs(outputFolder)
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
     for location in locations:
@@ -182,5 +189,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                 else:
                     print("Invalid Validation Data")
     pbar.close()
+    new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)

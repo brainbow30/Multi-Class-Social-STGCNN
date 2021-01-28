@@ -33,7 +33,8 @@ def test(KSTEPS=20):
         # V_obs = batch,seq,node,feat
         # V_obs_tmp = batch,feat,seq,node
         V_obs_tmp = V_obs.permute(0, 3, 1, 2)
-        V_obs_tmp = torch.div(V_obs_tmp, config.annotationScale)
+        V_obs_tmp[:, :, :1] = V_obs_tmp[:, :, :1] / config.annotationXScale
+        V_obs_tmp[:, :, 1:] = V_obs_tmp[:, :, 1:] / config.annotationYScale
         V_pred, _ = model(V_obs_tmp, A_obs.squeeze())
         # print(V_pred.shape)
         # torch.Size([1, 5, 12, 2])
@@ -91,7 +92,8 @@ def test(KSTEPS=20):
         for k in range(KSTEPS):
 
             V_pred = mvnormal.sample()
-            V_pred = torch.mul(V_pred, config.annotationScale)
+            V_pred[:, :, :1] = V_pred[:, :, :1] * config.annotationXScale
+            V_pred[:, :, 1:] = V_pred[:, :, 1:] * config.annotationYScale
             # V_pred = seq_to_nodes(pred_traj_gt.data.numpy().copy())
             V_pred_rel_to_abs = nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
                                                        V_x[-1, :, :].copy())

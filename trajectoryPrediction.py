@@ -37,16 +37,7 @@ class trajectoryPrediction(object):
         else:
             pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1]) == 8, pedPastTraj.items()))
         if (len(pedPastTraj) > 2):
-            seq_list = []
-            for key in (list(pedPastTraj.keys())):
-                pedestrianSeq = pedPastTraj[key]
-                xcoords = []
-                ycoords = []
-                for coords in pedestrianSeq:
-                    x, y = utils.centerCoord(coords)
-                    xcoords.append(x)
-                    ycoords.append(y)
-                seq_list.append([np.array([xcoords, ycoords])])
+            seq_list = list(map(self.convertSeq, pedPastTraj.values()))
             seq_list = np.concatenate(seq_list, axis=0)
             seq_list_rel = utils.convertToRelativeSequence(seq_list)
             obs_traj = torch.from_numpy(
@@ -62,7 +53,6 @@ class trajectoryPrediction(object):
             V_obs = torch.stack(V_obs).cuda()
             A_obs = torch.stack(A_obs).cuda()
             V_obs_tmp = V_obs.permute(0, 3, 1, 2)
-            V_obs_tmp = torch.div(V_obs_tmp, config.annotationScale)
             V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze())
             V_pred = V_pred.permute(0, 2, 3, 1)
             V_pred = V_pred.squeeze()
@@ -88,11 +78,29 @@ class trajectoryPrediction(object):
             # take multiple samples and average
             for i in range(samples):
                 V_pred = mvnormal.sample()
-                V_pred = torch.mul(V_pred, config.annotationScale)
                 # take predictions and add the pedestrians start pos to find actual position
                 trajectories.append(metrics.nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
                                                                    V_x[-1, :, :].copy()))
-            return np.average(trajectories, axis=0)
+
+            trajectories = np.average(trajectories, axis=0)
+            trajectories[:, :, :1] = trajectories[:, :, :1] * config.annotationXScale
+            trajectories[:, :, 1:] = trajectories[:, :, 1:] * config.annotationYScale
+            return trajectories
 
         else:
             return []
+
+    def convertSeq(self, pedestrianSeq):
+        xcoords = []
+        ycoords = []
+        for coords in pedestrianSeq:
+            x, y = utils.centerCoord(coords)
+            x, y = self.scaleDownCoordinates(x, y)
+            xcoords.append(x)
+            ycoords.append(y)
+        return [np.array([xcoords, ycoords])]
+
+    def scaleDownCoordinates(self, x, y):
+        x = x / config.annotationXScale
+        y = y / config.annotationYScale
+        return x, y
