@@ -9,8 +9,9 @@ app = Flask(__name__)
 def gen_frames(camera):
     while True:
         success, frame = camera.get_frame()  # read the camera frame
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
+        if (success):
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
 
 
 @app.route('/')

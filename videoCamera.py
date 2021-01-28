@@ -30,6 +30,8 @@ class VideoCamera(object):
     def get_frame(self, displayCircles=True):
         # extracting frames
         ret, frame = self.video.read()
+        if (frame is None):
+            return False, frame
         frameNum = int(self.video.get(cv2.CAP_PROP_POS_FRAMES))
         try:
             self.currentAnnotations = self.annotations.getFrameAnnotations(frameNum)
