@@ -144,6 +144,9 @@ class TrajectoryDataset(Dataset):
         non_linear_ped = []
         for path in all_files:
             data = read_file(path, delim)
+            if (np.array_equal(data, [])):
+                print(str(path) + " - No data in file")
+                continue
             frames = np.unique(data[:, 0]).tolist()
             frame_data = []
             for frame in frames:
@@ -192,48 +195,48 @@ class TrajectoryDataset(Dataset):
                     loss_mask_list.append(curr_loss_mask[:num_peds_considered])
                     seq_list.append(curr_seq[:num_peds_considered])
                     seq_list_rel.append(curr_seq_rel[:num_peds_considered])
-
         self.num_seq = len(seq_list)
-        seq_list = np.concatenate(seq_list, axis=0)
-        seq_list_rel = np.concatenate(seq_list_rel, axis=0)
-        loss_mask_list = np.concatenate(loss_mask_list, axis=0)
-        non_linear_ped = np.asarray(non_linear_ped)
+        if not (np.array_equal(seq_list, [])):
+            seq_list = np.concatenate(seq_list, axis=0)
+            seq_list_rel = np.concatenate(seq_list_rel, axis=0)
+            loss_mask_list = np.concatenate(loss_mask_list, axis=0)
+            non_linear_ped = np.asarray(non_linear_ped)
+            # Convert numpy -> Torch Tensor
+            self.obs_traj = torch.from_numpy(
+                seq_list[:, :, :self.obs_len]).type(torch.float)
+            self.pred_traj = torch.from_numpy(
+                seq_list[:, :, self.obs_len:]).type(torch.float)
+            self.obs_traj_rel = torch.from_numpy(
+                seq_list_rel[:, :, :self.obs_len]).type(torch.float)
+            self.pred_traj_rel = torch.from_numpy(
+                seq_list_rel[:, :, self.obs_len:]).type(torch.float)
+            self.loss_mask = torch.from_numpy(loss_mask_list).type(torch.float)
+            self.non_linear_ped = torch.from_numpy(non_linear_ped).type(torch.float)
+            cum_start_idx = [0] + np.cumsum(num_peds_in_seq).tolist()
+            self.seq_start_end = [
+                (start, end)
+                for start, end in zip(cum_start_idx, cum_start_idx[1:])
+            ]
+            # Convert to Graphs
+            self.v_obs = []
+            self.A_obs = []
+            self.v_pred = []
+            self.A_pred = []
+            print("Processing Data .....")
+            pbar = tqdm(total=len(self.seq_start_end))
+            for ss in range(len(self.seq_start_end)):
+                pbar.update(1)
 
-        # Convert numpy -> Torch Tensor
-        self.obs_traj = torch.from_numpy(
-            seq_list[:, :, :self.obs_len]).type(torch.float)
-        self.pred_traj = torch.from_numpy(
-            seq_list[:, :, self.obs_len:]).type(torch.float)
-        self.obs_traj_rel = torch.from_numpy(
-            seq_list_rel[:, :, :self.obs_len]).type(torch.float)
-        self.pred_traj_rel = torch.from_numpy(
-            seq_list_rel[:, :, self.obs_len:]).type(torch.float)
-        self.loss_mask = torch.from_numpy(loss_mask_list).type(torch.float)
-        self.non_linear_ped = torch.from_numpy(non_linear_ped).type(torch.float)
-        cum_start_idx = [0] + np.cumsum(num_peds_in_seq).tolist()
-        self.seq_start_end = [
-            (start, end)
-            for start, end in zip(cum_start_idx, cum_start_idx[1:])
-        ]
-        # Convert to Graphs
-        self.v_obs = []
-        self.A_obs = []
-        self.v_pred = []
-        self.A_pred = []
-        print("Processing Data .....")
-        pbar = tqdm(total=len(self.seq_start_end))
-        for ss in range(len(self.seq_start_end)):
-            pbar.update(1)
+                start, end = self.seq_start_end[ss]
 
-            start, end = self.seq_start_end[ss]
-
-            v_, a_ = seq_to_graph(self.obs_traj[start:end, :], self.obs_traj_rel[start:end, :], self.norm_lap_matr)
-            self.v_obs.append(v_.clone())
-            self.A_obs.append(a_.clone())
-            v_, a_ = seq_to_graph(self.pred_traj[start:end, :], self.pred_traj_rel[start:end, :], self.norm_lap_matr)
-            self.v_pred.append(v_.clone())
-            self.A_pred.append(a_.clone())
-        pbar.close()
+                v_, a_ = seq_to_graph(self.obs_traj[start:end, :], self.obs_traj_rel[start:end, :], self.norm_lap_matr)
+                self.v_obs.append(v_.clone())
+                self.A_obs.append(a_.clone())
+                v_, a_ = seq_to_graph(self.pred_traj[start:end, :], self.pred_traj_rel[start:end, :],
+                                      self.norm_lap_matr)
+                self.v_pred.append(v_.clone())
+                self.A_pred.append(a_.clone())
+            pbar.close()
 
     def __len__(self):
         return self.num_seq
