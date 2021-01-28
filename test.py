@@ -115,9 +115,15 @@ def test(KSTEPS=20):
             # todo mean vs min
             ade_bigls.append(np.mean(ade_ls[n]))
             fde_bigls.append(np.mean(fde_ls[n]))
+    if (len(ade_bigls) > 0):
+        ade_ = sum(ade_bigls) / len(ade_bigls)
+    else:
+        ade_ = math.inf
+    if (len(fde_bigls) > 0):
+        fde_ = sum(fde_bigls) / len(fde_bigls)
+    else:
+        fde_ = math.inf
 
-    ade_ = sum(ade_bigls) / len(ade_bigls)
-    fde_ = sum(fde_bigls) / len(fde_bigls)
     return ade_, fde_, raw_data_dict
 
 
