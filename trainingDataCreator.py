@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import shutil
 
 import numpy as np
 from tqdm import tqdm
@@ -127,7 +128,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     print("Converting Data...")
     # delete any current data in output folder
     if (os.path.exists(outputFolder)):
-        os.removedirs(outputFolder)
+        shutil.rmtree(outputFolder)
     locations = os.listdir(inputFolder)
     pbar = tqdm(total=len(locations))
     for location in locations:
@@ -139,18 +140,19 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
 
             trainingDataDict, testDataDict, validationDataDict = convertData(data, samplingRate=samplingRate,
                                                                              labels=labels)
-            if (not (os.path.isdir(os.path.join(outputFolder, location, video, "train")))):
-                os.makedirs(os.path.join(outputFolder, location, video, "train"))
-            if (not (os.path.isdir(os.path.join(outputFolder, location, video, "test")))):
-                os.makedirs(os.path.join(outputFolder, location, video, "test"))
-            if (not (os.path.isdir(os.path.join(outputFolder, location, video, "val")))):
-                os.makedirs(os.path.join(outputFolder, location, video, "val"))
+            currentFolder = os.path.join(outputFolder, location, video)
+            if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
+                os.makedirs(os.path.join(currentFolder, "train"))
+            if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
+                os.makedirs(os.path.join(currentFolder, "test"))
+            if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
+                os.makedirs(os.path.join(currentFolder, "val"))
             for i in range(samplingRate):
                 trainingData = np.asarray(trainingDataDict[i])
                 validationData = np.asarray(validationDataDict[i])
                 if (not np.any(np.isnan(trainingData))):
                     np.savetxt(
-                        os.path.join(outputFolder, location, video, "train",
+                        os.path.join(currentFolder, "train",
                                      "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
                         trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                         encoding=None)
@@ -158,12 +160,12 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                     print("Invalid Training Data")
                 if not (labels is None):
                     for label in labels:
-                        if (not (os.path.isdir(os.path.join(outputFolder, location, video, "test", label)))):
-                            os.makedirs(os.path.join(outputFolder, location, video, "test", label))
+                        if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
+                            os.makedirs(os.path.join(currentFolder, "test", label))
                         testData = np.asarray(testDataDict[label][i])
                         if (not np.any(np.isnan(testData))):
                             np.savetxt(
-                                os.path.join(outputFolder, location, video, "test", label,
+                                os.path.join(currentFolder, "test", label,
                                              "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
                                 testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                                 encoding=None)
@@ -174,7 +176,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
 
                     if (not np.any(np.isnan(testData))):
                         np.savetxt(
-                            os.path.join(outputFolder, location, video, "test",
+                            os.path.join(currentFolder, "test",
                                          "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
                             testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                             encoding=None)
@@ -182,7 +184,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                         print("Invalid Test Data")
                 if (not np.any(np.isnan(validationData))):
                     np.savetxt(
-                        os.path.join(outputFolder, location, video, "val",
+                        os.path.join(currentFolder, "val",
                                      "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
                         validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                         encoding=None)
