@@ -11,10 +11,17 @@ from model import social_stgcnn
 
 
 class trajectoryPrediction(object):
-    def __init__(self, path, samplingRate, checkpoint=None):
-        self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
-                                   output_feat=5, seq_len=8,
-                                   kernel_size=3, pred_seq_len=12).cuda()
+    def __init__(self, path, samplingRate, checkpoint=None, mean=0, std=1):
+        # Defining the model
+        if (mean != 0 and std != 1):
+            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
+                                       output_feat=5, seq_len=8,
+                                       kernel_size=3, pred_seq_len=12, mean=mean, std=std).cuda()
+        else:
+            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
+                                       output_feat=5, seq_len=8,
+                                       kernel_size=3, pred_seq_len=12).cuda()
+
         if (checkpoint is None):
             checkpoint_labels = ""
             if not (config.labels is None):

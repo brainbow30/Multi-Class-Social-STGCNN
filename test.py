@@ -1,5 +1,6 @@
 import copy
 import glob
+import json
 import pickle
 from multiprocessing.spawn import freeze_support
 
@@ -7,7 +8,6 @@ import torch.distributions.multivariate_normal as torchdist
 from torch.utils.data import DataLoader
 
 import config
-import trainingDataCreator
 from metrics import *
 from model import social_stgcnn
 from utils import *
@@ -188,9 +188,17 @@ def main():
                 num_workers=1)
 
             # Defining the model
-            model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                                  output_feat=args.output_size, seq_len=args.obs_seq_len,
-                                  kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
+            if (os.path.exists(os.path.join(data_set, 'normalising.json'))):
+                with open(os.path.join(data_set, 'normalising.json')) as f:
+                    normalising_data = json.load(f)
+                model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                                      output_feat=args.output_size, seq_len=args.obs_seq_len,
+                                      kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
+                                      mean=normalising_data["mean"], std=normalising_data["std"]).cuda()
+            else:
+                model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                                      output_feat=args.output_size, seq_len=args.obs_seq_len,
+                                      kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
             model.load_state_dict(torch.load(model_path))
             model.cuda()
 

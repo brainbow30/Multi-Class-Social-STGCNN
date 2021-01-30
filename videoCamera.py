@@ -1,3 +1,4 @@
+import json
 import os
 
 import cv2
@@ -11,7 +12,7 @@ from trajectoryPrediction import trajectoryPrediction
 
 class VideoCamera(object):
     def __init__(self, samplingRate):
-        self.path = config.path
+        self.path = os.path.join(config.path, config.video)
         # capturing video
         self.video = cv2.VideoCapture('videos/' + self.path + '/video.mov')
         width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)  # float `width`
@@ -27,7 +28,13 @@ class VideoCamera(object):
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
         self.samplingRate = samplingRate
-        self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint)
+        if (os.path.exists(os.path.join("trainingData", config.path, 'normalising.json'))):
+            with open(os.path.join("trainingData", config.path, 'normalising.json')) as f:
+                normalising_data = json.load(f)
+            self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint,
+                                                             mean=normalising_data["mean"], std=normalising_data["std"])
+        else:
+            self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint)
         self.predTrajectories = []
 
     def __del__(self):
