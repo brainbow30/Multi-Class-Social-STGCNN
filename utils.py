@@ -173,9 +173,8 @@ class TrajectoryDataset(Dataset):
                     pad_front = frames.index(curr_ped_seq[0, 0]) - idx
                     pad_end = frames.index(curr_ped_seq[-1, 0]) - idx + 1
                     curr_ped_seq = np.transpose(curr_ped_seq[:, 2:])
-                    if (curr_ped_seq.shape[1] != self.seq_len):
+                    if ((curr_ped_seq.shape[1] != self.seq_len) or (pad_end - pad_front != self.seq_len)):
                         continue
-                    curr_ped_seq = curr_ped_seq
                     # Make coordinates relative
                     rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
                     rel_curr_ped_seq[:, 1:] = curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
