@@ -223,3 +223,30 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)
+
+
+def getMeanAndStd(datasetLocation):
+    obs_seq_len = 8
+    pred_seq_len = 12
+    dset_train = TrajectoryDataset(
+        os.path.join(datasetLocation, 'train'),
+        obs_len=obs_seq_len,
+        pred_len=pred_seq_len,
+        skip=1, norm_lap_matr=True)
+    loader_train = DataLoader(
+        dset_train,
+        batch_size=1,  # This is irrelative to the args batch size parameter
+        shuffle=True,
+        num_workers=0)
+    v_list = torch.FloatTensor().cuda()
+    for cnt, batch in enumerate(loader_train):
+        batch = [tensor.cuda() for tensor in batch]
+        obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
+        loss_mask, V_obs, A_obs, V_tr, A_tr = batch
+        V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
+        v_list = torch.cat((v_list, V_obs_tmp.squeeze()), 2)
+    mean = torch.mean(v_list, 2)
+    std = torch.std(v_list, 2)
+    normalisingData = {"mean": mean.data.cpu().tolist(), "std": std.data.cpu().tolist()}
+    with open(os.path.join(datasetLocation, 'normalising.json'), 'w') as json_file:
+        json.dump(normalisingData, json_file)
