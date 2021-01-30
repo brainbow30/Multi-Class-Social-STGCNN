@@ -4,9 +4,11 @@ import os
 import shutil
 
 import numpy as np
-from tqdm import tqdm
+import torch
+from torch.utils.data import DataLoader
 
 import config
+from utils import TrajectoryDataset
 
 
 def rowConversion(row):
@@ -130,67 +132,94 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     if (os.path.exists(outputFolder)):
         shutil.rmtree(outputFolder)
     locations = os.listdir(inputFolder)
-    pbar = tqdm(total=len(locations))
+    trainingDataDict = {}
+    testDataDict = {}
+    validationDataDict = {}
+    for label in labels:
+        testDataDict[label] = {}
+    for i in range(samplingRate):
+        trainingDataDict[i] = []
+        if not (labels is None):
+            for label in labels:
+                testDataDict[label][i] = []
+        else:
+            testDataDict[i] = []
+        validationDataDict[i] = []
     for location in locations:
-        pbar.update(1)
+        print("Converting " + str(locations.index(location) + 1) + "/" + str(len(locations)) + " Locations...")
         videos = os.listdir(os.path.join(inputFolder, location))
         for video in videos:
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
 
-            trainingDataDict, testDataDict, validationDataDict = convertData(data, samplingRate=samplingRate,
-                                                                             labels=labels)
-            currentFolder = os.path.join(outputFolder, location, video)
-            if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
-                os.makedirs(os.path.join(currentFolder, "train"))
-            if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
-                os.makedirs(os.path.join(currentFolder, "test"))
-            if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
-                os.makedirs(os.path.join(currentFolder, "val"))
+            videoTrainingDataDict, videoTestDataDict, videoValidationDataDict = convertData(data,
+                                                                                            samplingRate=samplingRate,
+                                                                                            labels=labels)
             for i in range(samplingRate):
-                trainingData = np.asarray(trainingDataDict[i])
-                validationData = np.asarray(validationDataDict[i])
-                if (not np.any(np.isnan(trainingData))):
-                    np.savetxt(
-                        os.path.join(currentFolder, "train",
-                                     "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
-                        trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                        encoding=None)
-                else:
-                    print("Invalid Training Data")
+                if (videoTrainingDataDict[i] != []):
+                    trainingDataDict[i] = trainingDataDict[i] + videoTrainingDataDict[i]
                 if not (labels is None):
                     for label in labels:
-                        if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
-                            os.makedirs(os.path.join(currentFolder, "test", label))
-                        testData = np.asarray(testDataDict[label][i])
-                        if (not np.any(np.isnan(testData))):
-                            np.savetxt(
-                                os.path.join(currentFolder, "test", label,
-                                             "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
-                                testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
-                                encoding=None)
-                        else:
-                            print("Invalid Test Data")
+                        if (videoTestDataDict[label][i] != []):
+                            testDataDict[label][i] = testDataDict[label][i] + videoTestDataDict[label][i]
                 else:
-                    testData = np.asarray(testDataDict[i])
+                    if (videoTestDataDict[i] != []):
+                        testDataDict[i] = testDataDict[i] + videoTestDataDict[i]
+                if (videoValidationDataDict[i] != []):
+                    validationDataDict[i] = validationDataDict[i] + videoValidationDataDict[i]
 
+        currentFolder = os.path.join(outputFolder, location)
+        if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
+            os.makedirs(os.path.join(currentFolder, "train"))
+        if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
+            os.makedirs(os.path.join(currentFolder, "test"))
+        if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
+            os.makedirs(os.path.join(currentFolder, "val"))
+        for i in range(samplingRate):
+            trainingData = np.asarray(trainingDataDict[i])
+            validationData = np.asarray(validationDataDict[i])
+            if (not np.any(np.isnan(trainingData))):
+                np.savetxt(
+                    os.path.join(currentFolder, "train",
+                                 "stan" + "_" + location + "_" + str(i) + ".txt"),
+                    trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    encoding=None)
+            else:
+                print("Invalid Training Data")
+            if not (labels is None):
+                for label in labels:
+                    if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
+                        os.makedirs(os.path.join(currentFolder, "test", label))
+                    testData = np.asarray(testDataDict[label][i])
                     if (not np.any(np.isnan(testData))):
                         np.savetxt(
-                            os.path.join(currentFolder, "test",
-                                         "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
+                            os.path.join(currentFolder, "test", label,
+                                         "stan" + "_" + location + "_" + str(i) + ".txt"),
                             testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                             encoding=None)
                     else:
                         print("Invalid Test Data")
-                if (not np.any(np.isnan(validationData))):
+            else:
+                testData = np.asarray(testDataDict[i])
+
+                if (not np.any(np.isnan(testData))):
                     np.savetxt(
-                        os.path.join(currentFolder, "val",
-                                     "stan" + "_" + location + "_" + video + "_" + str(i) + ".txt"),
-                        validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                        os.path.join(currentFolder, "test",
+                                     "stan" + "_" + location + "_" + str(i) + ".txt"),
+                        testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                         encoding=None)
                 else:
-                    print("Invalid Validation Data")
-    pbar.close()
+                    print("Invalid Test Data")
+            if (not np.any(np.isnan(validationData))):
+                np.savetxt(
+                    os.path.join(currentFolder, "val",
+                                 "stan" + "_" + location + "_" + str(i) + ".txt"),
+                    validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    encoding=None)
+            else:
+                print("Invalid Validation Data")
+        # print("Create Normalising Data...")
+        # getMeanAndStd(currentFolder)
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)
