@@ -17,10 +17,6 @@ def rowConversion(row):
             float(y_min) + float(y_max)) / (2.0), label.strip("\"")
 
 
-def scaleCoordinates(row):
-    frame, ped_id, x, y = row
-    return float(frame), float(ped_id), float(x / config.annotationXScale), float(y / config.annotationYScale)
-
 
 def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=None):
     trainingData = {}
@@ -57,18 +53,18 @@ def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=No
                 else:
                     testData[frame % samplingRate].append(row)
             elif (frame <= maxValidFrame):
-                validationData[frame % samplingRate].append(scaleCoordinates(row))
+                validationData[frame % samplingRate].append(row)
             else:
-                trainingData[frame % samplingRate].append(scaleCoordinates(row))
+                trainingData[frame % samplingRate].append(row)
 
         frame += 1
     # take middle 90% of image to train, test and validate on it
     for i in range(samplingRate):
         trainingData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.annotationXScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                config.annotationXScale * config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.annotationYScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.annotationYScale * config.fractionToRemove))))), trainingData[i]))
+                maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+            config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.fractionToRemove))))), trainingData[i]))
         if (labels is None):
             testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
                     maxX - (maxX / config.fractionToRemove))) and (
@@ -84,10 +80,10 @@ def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=No
                                                         maxY - (maxY / config.fractionToRemove)))),
                            testData[label][i]))
         validationData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.annotationXScale * config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-                config.annotationXScale * config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.annotationYScale * config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.annotationYScale * config.fractionToRemove))))), validationData[i]))
+                maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+            config.fractionToRemove))) and (row[3] >= (
+                maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
+                maxY / (config.fractionToRemove))))), validationData[i]))
     return trainingData, testData, validationData
 
 
@@ -109,8 +105,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                   "labels": labels,
                   "inputFolder": inputFolder,
                   "outputFolder": outputFolder,
-                  "annotationXScale": config.annotationXScale,
-                  "annotationYScale": config.annotationYScale,
                   "fractionToRemove": config.fractionToRemove,
                   "annotationType": config.annotationType,
                   "complete": False

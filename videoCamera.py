@@ -14,13 +14,6 @@ class VideoCamera(object):
         self.path = config.path
         # capturing video
         self.video = cv2.VideoCapture('videos/' + self.path + '/video.mov')
-        width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)  # float `width`
-        height = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
-        print("Frame Width: ", width)
-        print("Frame Height: ", height)
-        if (config.scaleAsFractionOfImage):
-            config.annotationXScale = width
-            config.annotationYScale = height
         self.pedPastTraj = {}
         self.colours = {}
         self.annotations = annotations(self.path)

@@ -93,8 +93,8 @@ class trajectoryPrediction(object):
                                                                    V_x[-1, :, :].copy()))
 
             trajectories = np.average(trajectories, axis=0)
-            trajectories[:, :, :1] = trajectories[:, :, :1] * config.annotationXScale
-            trajectories[:, :, 1:] = trajectories[:, :, 1:] * config.annotationYScale
+            trajectories[:, :, :1] = trajectories[:, :, :1]
+            trajectories[:, :, 1:] = trajectories[:, :, 1:]
             return trajectories
 
         else:
@@ -105,12 +105,6 @@ class trajectoryPrediction(object):
         ycoords = []
         for coords in pedestrianSeq:
             x, y = utils.centerCoord(coords)
-            x, y = self.scaleDownCoordinates(x, y)
             xcoords.append(x)
             ycoords.append(y)
         return [np.array([xcoords, ycoords])]
-
-    def scaleDownCoordinates(self, x, y):
-        x = x / config.annotationXScale
-        y = y / config.annotationYScale
-        return x, y
