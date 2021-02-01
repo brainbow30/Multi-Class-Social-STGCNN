@@ -144,7 +144,8 @@ class st_gcn(nn.Module):
 
 class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
-                 seq_len=8, pred_seq_len=12, kernel_size=3, mean=0, std=1):
+                 seq_len=8, pred_seq_len=12, kernel_size=3, mean=[[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]],
+                 std=[[1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]]):
         super(social_stgcnn, self).__init__()
         self.mean = torch.tensor(mean).cuda()
         self.std = torch.tensor(std).cuda()

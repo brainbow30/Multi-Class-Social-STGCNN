@@ -1,4 +1,3 @@
-import json
 import os
 
 import cv2
@@ -12,7 +11,7 @@ from trajectoryPrediction import trajectoryPrediction
 
 class VideoCamera(object):
     def __init__(self, samplingRate):
-        self.path = os.path.join(config.path, config.video)
+        self.path = config.path
         # capturing video
         self.video = cv2.VideoCapture('videos/' + self.path + '/video.mov')
         width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)  # float `width`
@@ -28,13 +27,7 @@ class VideoCamera(object):
         homog_file = "annotations/" + self.path + "/H.txt"
         self.H = np.linalg.inv((np.loadtxt(homog_file))) if os.path.exists(homog_file) else np.eye(3)
         self.samplingRate = samplingRate
-        if (os.path.exists(os.path.join("trainingData", config.path, 'normalising.json'))):
-            with open(os.path.join("trainingData", config.path, 'normalising.json')) as f:
-                normalising_data = json.load(f)
-            self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint,
-                                                             mean=normalising_data["mean"], std=normalising_data["std"])
-        else:
-            self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint)
+        self.trajectoryPrediction = trajectoryPrediction(self.path, self.samplingRate, checkpoint=config.checkpoint)
         self.predTrajectories = []
 
     def __del__(self):
@@ -80,19 +73,21 @@ class VideoCamera(object):
                 predX, predY = framePrediction[i]
                 pos = [predX, predY]
                 y, x = utils.to_image_frame(self.H, np.array(pos))
-                cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
+                if (i < len(keys)):
+                    cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
                 if (not (prevFrame is None)):
                     predX, predY = prevFrame[i]
                     pos = [predX, predY]
                     y2, x2 = utils.to_image_frame(self.H, np.array(pos))
-                    cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
+                    if (i < len(keys)):
+                        cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
         ret, jpeg = cv2.imencode('.jpg', frame)
         return ret, jpeg.tobytes()
 
     def displayAnnotation(self, frame, annotation):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
-        ped_id = int(ped_id)
+        ped_id = int(float(ped_id))
         min_coords = np.array([x_min, y_min])
         max_coords = np.array([x_max, y_max])
         y_min, x_min = utils.to_image_frame(self.H, min_coords)
@@ -109,7 +104,7 @@ class VideoCamera(object):
 
     def updatePastTraj(self, annotation, newPedPastTraj):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
-        ped_id = int(ped_id)
+        ped_id = int(float(ped_id))
         if (config.labels is None or label.strip("\"") in config.labels):
             if (ped_id in self.pedPastTraj):
                 currentList = self.pedPastTraj[ped_id]

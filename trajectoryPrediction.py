@@ -1,3 +1,4 @@
+import json
 import os
 
 import numpy as np
@@ -11,17 +12,7 @@ from model import social_stgcnn
 
 
 class trajectoryPrediction(object):
-    def __init__(self, path, samplingRate, checkpoint=None, mean=0, std=1):
-        # Defining the model
-        if (mean != 0 and std != 1):
-            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
-                                       output_feat=5, seq_len=8,
-                                       kernel_size=3, pred_seq_len=12, mean=mean, std=std).cuda()
-        else:
-            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
-                                       output_feat=5, seq_len=8,
-                                       kernel_size=3, pred_seq_len=12).cuda()
-
+    def __init__(self, path, samplingRate, checkpoint=None):
         if (checkpoint is None):
             checkpoint_labels = ""
             if not (config.labels is None):
@@ -30,11 +21,23 @@ class trajectoryPrediction(object):
                         checkpoint_labels += config.labels[i]
                     else:
                         checkpoint_labels += ("-" + config.labels[i])
-            nnPath = os.path.join("checkpoint", path + "-" + str(samplingRate), checkpoint_labels, "val_best.pth")
+            nnPath = os.path.join("checkpoint", path + "-" + str(samplingRate), checkpoint_labels)
         else:
-            nnPath = os.path.join(checkpoint, "val_best.pth")
+            nnPath = checkpoint
+        if (os.path.exists(os.path.join(nnPath, 'normalising.json'))):
+            with open(os.path.join(nnPath, 'normalising.json')) as f:
+                normalising_data = json.load(f)
+                self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
+                                           output_feat=5, seq_len=8,
+                                           kernel_size=3, pred_seq_len=12, mean=normalising_data["mean"],
+                                           std=normalising_data["std"]).cuda()
+        else:
+            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
+                                       output_feat=5, seq_len=8,
+                                       kernel_size=3, pred_seq_len=12).cuda()
+
         self.model.load_state_dict(
-            torch.load(nnPath))
+            torch.load(os.path.join(nnPath, "val_best.pth")))
         self.model.cuda()
 
     def predict(self, pedPastTraj, keys=None, samples=20):

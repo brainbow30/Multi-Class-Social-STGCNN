@@ -8,6 +8,7 @@ import torch.distributions.multivariate_normal as torchdist
 from torch.utils.data import DataLoader
 
 import config
+import trainingDataCreator
 from metrics import *
 from model import social_stgcnn
 from utils import *
@@ -188,8 +189,8 @@ def main():
                 num_workers=1)
 
             # Defining the model
-            if (os.path.exists(os.path.join(data_set, 'normalising.json'))):
-                with open(os.path.join(data_set, 'normalising.json')) as f:
+            if (os.path.exists(os.path.join(exp_path, 'normalising.json'))):
+                with open(os.path.join(exp_path, 'normalising.json')) as f:
                     normalising_data = json.load(f)
                 model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                                       output_feat=args.output_size, seq_len=args.obs_seq_len,

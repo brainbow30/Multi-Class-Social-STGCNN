@@ -248,5 +248,4 @@ def getMeanAndStd(datasetLocation):
     mean = torch.mean(v_list, 2)
     std = torch.std(v_list, 2)
     normalisingData = {"mean": mean.data.cpu().tolist(), "std": std.data.cpu().tolist()}
-    with open(os.path.join(datasetLocation, 'normalising.json'), 'w') as json_file:
-        json.dump(normalisingData, json_file)
+    return normalisingData

@@ -122,6 +122,7 @@ def graph_loss(V_pred, V_target):
 
 def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     checkpointLocation = datasetLocation + "-" + str(sampling_rate)
+    checkpoint_dir = os.path.join('checkpoint', checkpointLocation)
     print('*' * 30)
     print("Training initiating....")
     print(args)
@@ -154,8 +155,8 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         num_workers=0)
 
     # Defining the model
-    if (os.path.exists(os.path.join(data_set, 'normalising.json'))):
-        with open(os.path.join(data_set, 'normalising.json')) as f:
+    if (os.path.exists(os.path.join(checkpoint_dir, 'normalising.json'))):
+        with open(os.path.join(checkpoint_dir, 'normalising.json')) as f:
             normalising_data = json.load(f)
         model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                               output_feat=args.output_size, seq_len=args.obs_seq_len,
@@ -173,7 +174,6 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     if args.use_lrschd:
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_sh_rate, gamma=0.2)
 
-    checkpoint_dir = os.path.join('checkpoint', checkpointLocation)
     if not (config.labels is None):
         checkpoint_labels = ""
         for i in range(len(config.labels)):
@@ -225,7 +225,21 @@ if __name__ == '__main__':
         trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
                                                samplingRate=config.samplingRate,
                                                labels=config.labels)
-        print("Done")
+
+        checkpoint_dir = os.path.join("checkpoint", config.path + "-" + str(config.samplingRate))
+        if not (config.labels is None):
+            checkpoint_labels = ""
+            for i in range(len(config.labels)):
+                if (i == 0):
+                    checkpoint_labels += config.labels[i]
+                else:
+                    checkpoint_labels += ("-" + config.labels[i])
+            checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
+        if not (os.path.exists(os.path.join(checkpoint_dir, 'normalising.json'))):
+            print("Create Normalising Data...")
+            normalisingData = trainingDataCreator.getMeanAndStd(os.path.join("trainingData", config.path))
+            with open(os.path.join(checkpoint_dir, 'normalising.json'), 'w') as json_file:
+                json.dump(normalisingData, json_file)
     parser = argparse.ArgumentParser()
 
     # Model specific parameters
