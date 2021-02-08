@@ -144,12 +144,10 @@ class st_gcn(nn.Module):
 
 class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
-                 seq_len=8, pred_seq_len=12, kernel_size=3, mean=[[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]],
-                 std=[[1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]]):
+                 seq_len=8, pred_seq_len=12, kernel_size=3):
         super(social_stgcnn, self).__init__()
-        self.mean = torch.tensor(mean).cuda()
-        self.std = torch.tensor(std).cuda()
-        self.std = torch.where(self.std == 0, torch.ones_like(self.std), self.std)
+        self.conv1 = nn.Conv1d(in_channels=2, out_channels=1, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=3, padding=1)
         self.n_stgcnn = n_stgcnn
         self.n_txpcnn = n_txpcnn
 
@@ -169,9 +167,11 @@ class social_stgcnn(nn.Module):
         for j in range(self.n_txpcnn):
             self.prelus.append(nn.PReLU())
 
-    def forward(self, v, a):
-        v = v.squeeze().sub(self.mean.unsqueeze(2))
-        v = v.div(self.std.unsqueeze(2)).unsqueeze(0)
+    def forward(self, v, a, hot_enc):
+
+        hot_enc = self.conv1(hot_enc.permute(0, 2, 1)).squeeze().repeat(8, 1).repeat(2, 1, 1).unsqueeze(0)
+        v = torch.cat((v, hot_enc))
+        v = self.conv2(v).squeeze(1).unsqueeze(0)
         for k in range(self.n_stgcnn):
             v, a = self.st_gcns[k](v, a)
 

@@ -1,12 +1,10 @@
 import argparse
-import json
 import pickle
 from multiprocessing.spawn import freeze_support
 
 from torch import optim
 from torch.utils.data import DataLoader
 
-import config
 import trainingDataCreator
 from metrics import *
 from model import *
@@ -27,15 +25,13 @@ def train(model, epoch, optimizer, trainingData, metrics):
         # Get data
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr = batch
-
+        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
         optimizer.zero_grad()
         # Forward
         # V_obs = batch,seq,node,feat
         # V_obs_tmp = batch,feat,seq,node
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
-
-        V_pred, _ = model(V_obs_tmp, A_obs.squeeze())
+        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), obs_classes)
 
         V_pred = V_pred.permute(0, 2, 3, 1).contiguous()
 
@@ -81,11 +77,11 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         # Get data
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
 
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
 
-        V_pred, _ = model(V_obs_tmp, A_obs.squeeze())
+        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), obs_classes)
 
         V_pred = V_pred.permute(0, 2, 3, 1).contiguous()
 
@@ -155,17 +151,9 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         num_workers=0)
 
     # Defining the model
-    if (os.path.exists(os.path.join(checkpoint_dir, 'normalising.json'))):
-        with open(os.path.join(checkpoint_dir, 'normalising.json')) as f:
-            normalising_data = json.load(f)
-        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                              output_feat=args.output_size, seq_len=args.obs_seq_len,
-                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
-                              mean=normalising_data["mean"], std=normalising_data["std"]).cuda()
-    else:
-        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                              output_feat=args.output_size, seq_len=args.obs_seq_len,
-                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
+    model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                          output_feat=args.output_size, seq_len=args.obs_seq_len,
+                          kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
 
     # Training settings
     # todo sgd vs adam
@@ -235,11 +223,6 @@ if __name__ == '__main__':
                 else:
                     checkpoint_labels += ("-" + config.labels[i])
             checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
-        if not (os.path.exists(os.path.join(checkpoint_dir, 'normalising.json'))):
-            print("Create Normalising Data...")
-            normalisingData = trainingDataCreator.getMeanAndStd(os.path.join("trainingData", config.path))
-            with open(os.path.join(checkpoint_dir, 'normalising.json'), 'w') as json_file:
-                json.dump(normalisingData, json_file)
     parser = argparse.ArgumentParser()
 
     # Model specific parameters

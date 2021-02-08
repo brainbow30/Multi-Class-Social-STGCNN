@@ -100,12 +100,12 @@ class VideoCamera(object):
         ped_id = int(float(ped_id))
         if (config.labels is None or label.strip("\"") in config.labels):
             if (ped_id in self.pedPastTraj):
-                currentList = self.pedPastTraj[ped_id]
+                currentList, _ = self.pedPastTraj[ped_id]
                 if (len(currentList) > 7):
-                    newPedPastTraj[ped_id] = currentList[1:]
+                    newPedPastTraj[ped_id] = (currentList[1:], label)
                 else:
-                    newPedPastTraj[ped_id] = currentList
+                    newPedPastTraj[ped_id] = (currentList, label)
             else:
-                newPedPastTraj[ped_id] = []
-            newPedPastTraj[ped_id].append([x_min, y_min, x_max, y_max])
+                newPedPastTraj[ped_id] = ([], label)
+            newPedPastTraj[ped_id][0].append([x_min, y_min, x_max, y_max])
         return newPedPastTraj

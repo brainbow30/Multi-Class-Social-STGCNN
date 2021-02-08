@@ -1,4 +1,3 @@
-import json
 import os
 
 import numpy as np
@@ -24,17 +23,9 @@ class trajectoryPrediction(object):
             nnPath = os.path.join("checkpoint", path + "-" + str(samplingRate), checkpoint_labels)
         else:
             nnPath = checkpoint
-        if (os.path.exists(os.path.join(nnPath, 'normalising.json'))):
-            with open(os.path.join(nnPath, 'normalising.json')) as f:
-                normalising_data = json.load(f)
-                self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
-                                           output_feat=5, seq_len=8,
-                                           kernel_size=3, pred_seq_len=12, mean=normalising_data["mean"],
-                                           std=normalising_data["std"]).cuda()
-        else:
-            self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
-                                       output_feat=5, seq_len=8,
-                                       kernel_size=3, pred_seq_len=12).cuda()
+        self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
+                                   output_feat=5, seq_len=8,
+                                   kernel_size=3, pred_seq_len=12).cuda()
 
         self.model.load_state_dict(
             torch.load(os.path.join(nnPath, "val_best.pth")))
@@ -43,17 +34,22 @@ class trajectoryPrediction(object):
     def predict(self, pedPastTraj, keys=None, samples=20):
 
         if (keys is None):
-            pedPastTraj = dict(filter(lambda elem: len(elem[1]) == 8, pedPastTraj.items()))
+            pedPastTraj = dict(filter(lambda elem: len(elem[1][0]) == 8, pedPastTraj.items()))
         else:
-            pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1]) == 8, pedPastTraj.items()))
+            pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1][0]) == 8, pedPastTraj.items()))
         if (len(pedPastTraj) > 2):
-            seq_list = list(map(self.convertSeq, pedPastTraj.values()))
+            values = np.array(list(map(self.convertSeq, pedPastTraj.values())), dtype=object)
+            values = np.transpose(values, (1, 0))
+            seq_list = values[0]
+            seq_list_classes = values[1]
             seq_list = np.concatenate(seq_list, axis=0)
             seq_list_rel = utils.convertToRelativeSequence(seq_list)
+            # seq_list_classes = np.concatenate(seq_list_classes, axis=0)
             obs_traj = torch.from_numpy(
                 seq_list).type(torch.float)
             obs_traj_rel = torch.from_numpy(
                 seq_list_rel).type(torch.float)
+            obs_classes = torch.from_numpy(np.stack(seq_list_classes)).type(torch.float).unsqueeze(0).cuda()
             V_obs = []
             A_obs = []
             v_, a_ = utils.seq_to_graph(obs_traj, obs_traj_rel, True)
@@ -63,7 +59,7 @@ class trajectoryPrediction(object):
             V_obs = torch.stack(V_obs).cuda()
             A_obs = torch.stack(A_obs).cuda()
             V_obs_tmp = V_obs.permute(0, 3, 1, 2)
-            V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze())
+            V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze(), obs_classes)
             V_pred = V_pred.permute(0, 2, 3, 1)
             V_pred = V_pred.squeeze()
             num_of_objs = obs_traj_rel.shape[0]
@@ -100,11 +96,13 @@ class trajectoryPrediction(object):
         else:
             return []
 
-    def convertSeq(self, pedestrianSeq):
+    def convertSeq(self, value):
+        pedestrianSeq, label = value
+        encoding = np.array(config.one_hot_encoding[label.strip("\"")], dtype=float)
         xcoords = []
         ycoords = []
         for coords in pedestrianSeq:
             x, y = utils.centerCoord(coords)
             xcoords.append(x)
             ycoords.append(y)
-        return [np.array([xcoords, ycoords])]
+        return [np.array([xcoords, ycoords])], encoding

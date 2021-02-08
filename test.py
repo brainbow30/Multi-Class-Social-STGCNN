@@ -1,13 +1,11 @@
 import copy
 import glob
-import json
 import pickle
 from multiprocessing.spawn import freeze_support
 
 import torch.distributions.multivariate_normal as torchdist
 from torch.utils.data import DataLoader
 
-import config
 import trainingDataCreator
 from metrics import *
 from model import social_stgcnn
@@ -26,7 +24,7 @@ def test(KSTEPS=20):
         # Get data
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
 
         num_of_objs = obs_traj_rel.shape[1]
 
@@ -36,7 +34,7 @@ def test(KSTEPS=20):
         V_obs_tmp = V_obs.permute(0, 3, 1, 2)
         V_obs_tmp[:, :, :1] = V_obs_tmp[:, :, :1]
         V_obs_tmp[:, :, 1:] = V_obs_tmp[:, :, 1:]
-        V_pred, _ = model(V_obs_tmp, A_obs.squeeze())
+        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), obs_classes)
         # print(V_pred.shape)
         # torch.Size([1, 5, 12, 2])
         # torch.Size([12, 2, 5])
@@ -189,17 +187,9 @@ def main():
                 num_workers=1)
 
             # Defining the model
-            if (os.path.exists(os.path.join(exp_path, 'normalising.json'))):
-                with open(os.path.join(exp_path, 'normalising.json')) as f:
-                    normalising_data = json.load(f)
-                model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                                      output_feat=args.output_size, seq_len=args.obs_seq_len,
-                                      kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
-                                      mean=normalising_data["mean"], std=normalising_data["std"]).cuda()
-            else:
-                model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                                      output_feat=args.output_size, seq_len=args.obs_seq_len,
-                                      kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
+            model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                                  output_feat=args.output_size, seq_len=args.obs_seq_len,
+                                  kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
             model.load_state_dict(torch.load(model_path))
             model.cuda()
 

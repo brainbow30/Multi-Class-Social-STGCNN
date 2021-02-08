@@ -7,6 +7,8 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+import config
+
 
 def to_image_frame(Hinv, loc):
     """
@@ -101,9 +103,13 @@ def read_file(_path, delim='\t'):
     with open(_path, 'r') as f:
         for line in f:
             line = line.strip().split(delim)
-            line = [float(i) for i in line]
+            for i in range(len(line)):
+                try:
+                    line[i] = float(line[i])
+                except ValueError:
+                    line[i] = str(line[i])
             data.append(line)
-    return np.asarray(data)
+    return np.asarray(data, dtype=object)
 
 
 class TrajectoryDataset(Dataset):
@@ -125,7 +131,6 @@ class TrajectoryDataset(Dataset):
         - delim: Delimiter in the dataset files
         """
         super(TrajectoryDataset, self).__init__()
-
         self.max_peds_in_frame = 0
         self.data_dir = data_dir
         self.obs_len = obs_len
@@ -140,6 +145,7 @@ class TrajectoryDataset(Dataset):
         num_peds_in_seq = []
         seq_list = []
         seq_list_rel = []
+        seq_list_class = []
         loss_mask_list = []
         non_linear_ped = []
         for path in all_files:
@@ -153,15 +159,16 @@ class TrajectoryDataset(Dataset):
                 frame_data.append(data[frame == data[:, 0], :])
             num_sequences = int(
                 math.ceil((len(frames) - self.seq_len + 1) / skip))
-
             for idx in range(0, num_sequences * self.skip + 1, skip):
                 curr_seq_data = np.concatenate(
                     frame_data[idx:idx + self.seq_len], axis=0)
+
                 peds_in_curr_seq = np.unique(curr_seq_data[:, 1])
                 self.max_peds_in_frame = max(self.max_peds_in_frame, len(peds_in_curr_seq))
                 curr_seq_rel = np.zeros((len(peds_in_curr_seq), 2,
                                          self.seq_len))
                 curr_seq = np.zeros((len(peds_in_curr_seq), 2, self.seq_len))
+                curr_seq_class = np.empty((len(peds_in_curr_seq)), dtype=object)
                 curr_loss_mask = np.zeros((len(peds_in_curr_seq),
                                            self.seq_len))
                 num_peds_considered = 0
@@ -169,38 +176,42 @@ class TrajectoryDataset(Dataset):
                 for _, ped_id in enumerate(peds_in_curr_seq):
                     curr_ped_seq = curr_seq_data[curr_seq_data[:, 1] ==
                                                  ped_id, :]
-                    curr_ped_seq = np.around(curr_ped_seq, decimals=4)
+                    curr_ped_seq[:, :-1] = np.round(np.asarray(curr_ped_seq[:, :-1], dtype=float), decimals=4)
                     pad_front = frames.index(curr_ped_seq[0, 0]) - idx
                     pad_end = frames.index(curr_ped_seq[-1, 0]) - idx + 1
                     curr_ped_seq = np.transpose(curr_ped_seq[:, 2:])
+                    classEncoding = np.asarray(config.one_hot_encoding[curr_ped_seq[-1][0]], dtype=float)
+                    curr_ped_seq = np.array(curr_ped_seq[:-1], dtype=float)
                     if ((curr_ped_seq.shape[1] != self.seq_len) or (pad_end - pad_front != self.seq_len)):
                         continue
                     # Make coordinates relative
                     rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
                     rel_curr_ped_seq[:, 1:] = curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
-
                     _idx = num_peds_considered
                     curr_seq[_idx, :, pad_front:pad_end] = curr_ped_seq
                     curr_seq_rel[_idx, :, pad_front:pad_end] = rel_curr_ped_seq
+                    curr_seq_class[_idx] = classEncoding
                     # Linear vs Non-Linear Trajectory
                     _non_linear_ped.append(
                         poly_fit(curr_ped_seq, pred_len, threshold))
                     curr_loss_mask[_idx, pad_front:pad_end] = 1
                     num_peds_considered += 1
-
                 if num_peds_considered > min_ped:
                     non_linear_ped += _non_linear_ped
                     num_peds_in_seq.append(num_peds_considered)
                     loss_mask_list.append(curr_loss_mask[:num_peds_considered])
                     seq_list.append(curr_seq[:num_peds_considered])
                     seq_list_rel.append(curr_seq_rel[:num_peds_considered])
+                    seq_list_class.append(curr_seq_class[:num_peds_considered])
         self.num_seq = len(seq_list)
         if not (np.array_equal(seq_list, [])):
             seq_list = np.concatenate(seq_list, axis=0)
             seq_list_rel = np.concatenate(seq_list_rel, axis=0)
+            seq_list_class = np.concatenate(seq_list_class, axis=0)
             loss_mask_list = np.concatenate(loss_mask_list, axis=0)
             non_linear_ped = np.asarray(non_linear_ped)
             # Convert numpy -> Torch Tensor
+            self.obs_classes = torch.tensor(np.stack(seq_list_class)).type(torch.float)
             self.obs_traj = torch.from_numpy(
                 seq_list[:, :, :self.obs_len]).type(torch.float)
             self.pred_traj = torch.from_numpy(
@@ -248,7 +259,7 @@ class TrajectoryDataset(Dataset):
             self.obs_traj_rel[start:end, :], self.pred_traj_rel[start:end, :],
             self.non_linear_ped[start:end], self.loss_mask[start:end, :],
             self.v_obs[index], self.A_obs[index],
-            self.v_pred[index], self.A_pred[index]
+            self.v_pred[index], self.A_pred[index], self.obs_classes[start:end]
 
         ]
         return out

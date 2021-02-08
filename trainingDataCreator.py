@@ -46,7 +46,7 @@ def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=No
 
         if (labels is None or row[4] in labels):
             label = row[-1]
-            row = (math.floor(row[0] / samplingRate),) + row[1:-1]
+            row = (math.floor(row[0] / samplingRate),) + row[1:]
             if (frame <= maxTestFrame):
                 if not (labels is None):
                     testData[label][frame % samplingRate].append(row)
@@ -151,69 +151,56 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                                                                                             labels=labels)
             for i in range(samplingRate):
                 if (videoTrainingDataDict[i] != []):
-                    trainingDataDict[i] = trainingDataDict[i] + videoTrainingDataDict[i]
+                    trainingDataDict[i] = videoTrainingDataDict[i]
                 if not (labels is None):
                     for label in labels:
                         if (videoTestDataDict[label][i] != []):
-                            testDataDict[label][i] = testDataDict[label][i] + videoTestDataDict[label][i]
+                            testDataDict[label][i] = videoTestDataDict[label][i]
                 else:
                     if (videoTestDataDict[i] != []):
-                        testDataDict[i] = testDataDict[i] + videoTestDataDict[i]
+                        testDataDict[i] = videoTestDataDict[i]
                 if (videoValidationDataDict[i] != []):
-                    validationDataDict[i] = validationDataDict[i] + videoValidationDataDict[i]
+                    validationDataDict[i] = videoValidationDataDict[i]
 
-        currentFolder = os.path.join(outputFolder, location)
-        if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
-            os.makedirs(os.path.join(currentFolder, "train"))
-        if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
-            os.makedirs(os.path.join(currentFolder, "test"))
-        if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
-            os.makedirs(os.path.join(currentFolder, "val"))
-        for i in range(samplingRate):
-            trainingData = np.asarray(trainingDataDict[i])
-            validationData = np.asarray(validationDataDict[i])
-            if (not np.any(np.isnan(trainingData))):
+            currentFolder = os.path.join(outputFolder, location, video)
+            if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
+                os.makedirs(os.path.join(currentFolder, "train"))
+            if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
+                os.makedirs(os.path.join(currentFolder, "test"))
+            if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
+                os.makedirs(os.path.join(currentFolder, "val"))
+            for i in range(samplingRate):
+                trainingData = np.asarray(trainingDataDict[i])
+                validationData = np.asarray(validationDataDict[i])
                 np.savetxt(
                     os.path.join(currentFolder, "train",
                                  "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    trainingData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    trainingData, fmt="%s", delimiter='\t', newline='\n', header='', footer='', comments='# ',
                     encoding=None)
-            else:
-                print("Invalid Training Data")
-            if not (labels is None):
-                for label in labels:
-                    if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
-                        os.makedirs(os.path.join(currentFolder, "test", label))
-                    testData = np.asarray(testDataDict[label][i])
-                    if (not np.any(np.isnan(testData))):
+
+                if not (labels is None):
+                    for label in labels:
+                        if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
+                            os.makedirs(os.path.join(currentFolder, "test", label))
+                        testData = np.asarray(testDataDict[label][i])
                         np.savetxt(
                             os.path.join(currentFolder, "test", label,
                                          "stan" + "_" + location + "_" + str(i) + ".txt"),
-                            testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                            testData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                             encoding=None)
-                    else:
-                        print("Invalid Test Data")
-            else:
-                testData = np.asarray(testDataDict[i])
-
-                if (not np.any(np.isnan(testData))):
+                else:
+                    testData = np.asarray(testDataDict[i])
                     np.savetxt(
                         os.path.join(currentFolder, "test",
                                      "stan" + "_" + location + "_" + str(i) + ".txt"),
-                        testData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                        testData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                         encoding=None)
-                else:
-                    print("Invalid Test Data")
-            if (not np.any(np.isnan(validationData))):
+
                 np.savetxt(
                     os.path.join(currentFolder, "val",
                                  "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    validationData, fmt='%.5e', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    validationData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
                     encoding=None)
-            else:
-                print("Invalid Validation Data")
-        # print("Create Normalising Data...")
-        # getMeanAndStd(currentFolder)
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)
@@ -236,7 +223,7 @@ def getMeanAndStd(datasetLocation):
     for cnt, batch in enumerate(loader_train):
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
         v_list = torch.cat((v_list, V_obs_tmp.squeeze()), 2)
     mean = torch.mean(v_list, 2)
