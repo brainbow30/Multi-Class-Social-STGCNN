@@ -103,12 +103,13 @@ def read_file(_path, delim='\t'):
     with open(_path, 'r') as f:
         for line in f:
             line = line.strip().split(delim)
-            for i in range(len(line)):
-                try:
-                    line[i] = float(line[i])
-                except ValueError:
-                    line[i] = str(line[i])
-            data.append(line)
+            if (len(line) == 5):
+                for i in range(len(line)):
+                    try:
+                        line[i] = float(line[i])
+                    except ValueError:
+                        line[i] = str(line[i])
+                data.append(line)
     return np.asarray(data, dtype=object)
 
 
@@ -117,7 +118,7 @@ class TrajectoryDataset(Dataset):
 
     def __init__(
             self, data_dir, obs_len=8, pred_len=8, skip=1, threshold=0.002,
-            min_ped=1, delim='\t', norm_lap_matr=True):
+            min_ped=1, delim='space', norm_lap_matr=True):
         """
         Args:
         - data_dir: Directory containing dataset files in the format

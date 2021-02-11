@@ -5,6 +5,7 @@ import shutil
 
 import numpy as np
 import torch
+from sklearn.utils import compute_class_weight
 from torch.utils.data import DataLoader
 
 import config
@@ -17,74 +18,40 @@ def rowConversion(row):
             float(y_min) + float(y_max)) / (2.0), label.strip("\"")
 
 
+def convertData(data):
+    return list(map(lambda row: rowConversion(row), data))
 
-def convertData(data, testSplit=0.15, validSplit=0.15, samplingRate=5, labels=None):
-    trainingData = {}
-    testData = {}
-    validationData = {}
-    maxTestFrame = int(math.floor(len(data) * testSplit))
-    maxValidFrame = maxTestFrame + int(math.floor(len(data) * validSplit))
-    frame = 0
-    maxX = 0
-    maxY = 0
-    for label in labels:
-        testData[label] = {}
+
+def splitIntoLabels(data, labels):
+    if not (labels is None):
+        labelledData = {}
+        for label in labels:
+            labelledData[label] = []
+        for row in data:
+            if (row[4] in labels):
+                labelledData[row[4]].append(row)
+        return labelledData
+    else:
+        return data
+
+
+def splitData(data, samplingRate=5):
+    dict = {}
     for i in range(samplingRate):
-        trainingData[i] = []
-        if not (labels is None):
-            for label in labels:
-                testData[label][i] = []
-        else:
-            testData[i] = []
-        validationData[i] = []
+        dict[i] = []
     for row in data:
-        row = rowConversion(row)
-        if (row[2] > maxX):
-            maxX = row[2]
-        if (row[3] > maxY):
-            maxY = row[3]
+        dict[row[0] % samplingRate].append((math.floor(row[0] / samplingRate),) + row[1:])
+    return dict
 
-        if (labels is None or row[4] in labels):
-            label = row[-1]
-            row = (math.floor(row[0] / samplingRate),) + row[1:]
-            if (frame <= maxTestFrame):
-                if not (labels is None):
-                    testData[label][frame % samplingRate].append(row)
-                else:
-                    testData[frame % samplingRate].append(row)
-            elif (frame <= maxValidFrame):
-                validationData[frame % samplingRate].append(row)
-            else:
-                trainingData[frame % samplingRate].append(row)
 
-        frame += 1
+def removeEdgeData(data, maxX, maxY):
     # take middle 90% of image to train, test and validate on it
-    for i in range(samplingRate):
-        trainingData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-            config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.fractionToRemove))))), trainingData[i]))
-        if (labels is None):
-            testData[i] = list(filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
-                    maxX - (maxX / config.fractionToRemove))) and (
-                                                           row[3] >= (maxY / config.fractionToRemove) and row[3] <= (
-                                                           maxY - (maxY / config.fractionToRemove)))), testData[i]))
-        else:
-            for label in labels:
-                testData[label][i] = list(
-                    filter(lambda row: ((row[2] >= (maxX / config.fractionToRemove) and row[2] <= (
-                            maxX - (maxX / config.fractionToRemove))) and (
-                                                row[3] >= (maxY / config.fractionToRemove) and row[
-                                            3] <= (
-                                                        maxY - (maxY / config.fractionToRemove)))),
-                           testData[label][i]))
-        validationData[i] = list(filter(lambda row: ((row[2] >= (
-                maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
-            config.fractionToRemove))) and (row[3] >= (
-                maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
-                maxY / (config.fractionToRemove))))), validationData[i]))
-    return trainingData, testData, validationData
+    data = list(filter(lambda row: ((row[2] >= (
+            maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+        config.fractionToRemove))) and (row[3] >= (
+            maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
+            maxY / (config.fractionToRemove))))), data))
+    return data
 
 
 def read_file(_path, delim='space'):
@@ -145,10 +112,44 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
         for video in videos:
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
+            data = convertData(data)
+            maxX = max(data, key=lambda x: x[2])[2]
+            maxY = max(data, key=lambda x: x[3])[3]
+            data = removeEdgeData(data, maxX, maxY)
+            testSplit = 0.15
+            validSplit = 0.15
+            maxTestFrame = int(math.floor(len(data) * testSplit))
+            maxValidFrame = maxTestFrame + int(math.floor(len(data) * validSplit))
 
-            videoTrainingDataDict, videoTestDataDict, videoValidationDataDict = convertData(data,
-                                                                                            samplingRate=samplingRate,
-                                                                                            labels=labels)
+            testData = data[:maxTestFrame]
+            videoTestDataDict = splitIntoLabels(testData, labels)
+            for label in labels:
+                videoTestDataDict[label] = splitData(videoTestDataDict[label])
+
+            validationData = list(
+                filter(lambda row: labels is None or row[4] in labels, data[maxTestFrame:maxValidFrame]))
+            videoValidationDataDict = splitData(validationData)
+
+            trainingData = data[maxValidFrame:]
+            class_list = list(map(lambda row: row[4], trainingData))
+            trainingData = list(
+                filter(lambda row: labels is None or row[4] in labels, trainingData))
+            try:
+                class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
+            except ValueError:
+                class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
+            class_counts = []
+            for label in labels:
+                class_counts.append(class_list.count(label))
+            # undersampling
+            # videoTrainingDataDict=splitIntoLabels(trainingData, labels)
+            # desiredLength = sorted(list(map(lambda label: len(videoTrainingDataDict[label]), videoTrainingDataDict)))[-2]
+            # trainingData=[]
+            # for label in labels:
+            #     #todo find better sampling method
+            #     trainingData+=(videoTrainingDataDict[label][:desiredLength])
+            videoTrainingDataDict = splitData(trainingData)
+
             for i in range(samplingRate):
                 if (videoTrainingDataDict[i] != []):
                     trainingDataDict[i] = videoTrainingDataDict[i]
@@ -169,13 +170,16 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                 os.makedirs(os.path.join(currentFolder, "test"))
             if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
                 os.makedirs(os.path.join(currentFolder, "val"))
+
+            with open(os.path.join(currentFolder, "classInfo.json"), 'w') as json_file:
+                json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
             for i in range(samplingRate):
                 trainingData = np.asarray(trainingDataDict[i])
                 validationData = np.asarray(validationDataDict[i])
                 np.savetxt(
                     os.path.join(currentFolder, "train",
                                  "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    trainingData, fmt="%s", delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    trainingData, fmt="%s", delimiter=' ', newline='\n', header='', footer='', comments='# ',
                     encoding=None)
 
                 if not (labels is None):
@@ -186,20 +190,20 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                         np.savetxt(
                             os.path.join(currentFolder, "test", label,
                                          "stan" + "_" + location + "_" + str(i) + ".txt"),
-                            testData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                            testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
                             encoding=None)
                 else:
                     testData = np.asarray(testDataDict[i])
                     np.savetxt(
                         os.path.join(currentFolder, "test",
                                      "stan" + "_" + location + "_" + str(i) + ".txt"),
-                        testData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                        testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
                         encoding=None)
 
                 np.savetxt(
                     os.path.join(currentFolder, "val",
                                  "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    validationData, fmt='%s', delimiter='\t', newline='\n', header='', footer='', comments='# ',
+                    validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
                     encoding=None)
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
