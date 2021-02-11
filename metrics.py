@@ -104,7 +104,6 @@ def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights):
     for enc in obs_classes.data.cpu().numpy().copy()[0]:
         counts[list(config.one_hot_encoding.values()).index(enc.tolist())] += 1
     weight_sum = 0
-    counts[0] = 1
     for i in range(len(counts)):
         weight_sum += (counts[i] * class_weights[i])
     return torch.mul(result, (weight_sum / sum(counts)))
