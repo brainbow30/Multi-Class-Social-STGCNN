@@ -131,9 +131,9 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             videoValidationDataDict = splitData(validationData)
 
             trainingData = data[maxValidFrame:]
-            class_list = list(map(lambda row: row[4], trainingData))
             trainingData = list(
                 filter(lambda row: labels is None or row[4] in labels, trainingData))
+            class_list = list(map(lambda row: row[4], trainingData))
             try:
                 class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
             except ValueError:
