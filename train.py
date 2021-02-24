@@ -12,7 +12,7 @@ from model import *
 from utils import *
 
 
-def train(model, epoch, optimizer, trainingData, metrics, class_weights):
+def train(model, epoch, optimizer, trainingData, metrics, class_weights, class_counts):
     model.train()
     loss_batch = 0
     batch_count = 0
@@ -41,7 +41,7 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights):
         V_pred = V_pred.squeeze()
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
-            l = graph_loss(V_pred, V_tr, obs_classes, class_weights)
+            l = graph_loss(V_pred, V_tr, obs_classes[0], class_weights, class_counts)
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -64,7 +64,7 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights):
     metrics['train_loss'].append(loss_batch / batch_count)
 
 
-def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metrics, class_weights):
+def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metrics, class_weights, class_counts):
     model.eval()
     loss_batch = 0
     batch_count = 0
@@ -91,7 +91,7 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         V_pred = V_pred.squeeze()
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
-            l = graph_loss(V_pred, V_tr, obs_classes, class_weights)
+            l = graph_loss(V_pred, V_tr, obs_classes[0], class_weights, class_counts)
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -113,8 +113,8 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, 'val_best.pth'))  # OK
 
 
-def graph_loss(V_pred, V_target, obs_classes, class_weights):
-    return bivariate_loss(V_pred, V_target, obs_classes, class_weights)
+def graph_loss(V_pred, V_target, obs_classes, class_weights, class_counts):
+    return bivariate_loss(V_pred, V_target, obs_classes, class_weights, class_counts)
 
 
 def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
@@ -129,7 +129,9 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     pred_seq_len = args.pred_seq_len
     data_set = os.path.join('trainingData', datasetLocation)
     with open(os.path.join(data_set, 'classInfo.json')) as f:
-        class_weights = json.load(f)["class_weights"]
+        class_info = json.load(f)
+        class_weights = class_info["class_weights"]
+        class_counts = class_info["class_counts"]
     dset_train = TrajectoryDataset(
         os.path.join(data_set, 'train'),
         obs_len=obs_seq_len,
@@ -188,8 +190,8 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
 
     print('Training started ...')
     for epoch in range(num_epochs):
-        train(model, epoch, optimizer, loader_train, metrics, class_weights)
-        valid(model, epoch, checkpoint_dir, loader_val, metrics, constant_metrics, class_weights)
+        train(model, epoch, optimizer, loader_train, metrics, class_weights, class_counts)
+        valid(model, epoch, checkpoint_dir, loader_val, metrics, constant_metrics, class_weights, class_counts)
         if args.use_lrschd:
             scheduler.step()
 
