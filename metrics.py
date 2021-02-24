@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 import config
+import utils
 
 
 def ade(predAll, targetAll, count_):
@@ -71,7 +72,7 @@ def closer_to_zero(current, new_v):
         return False
 
 
-def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights):
+def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights, class_counts):
     # mux, muy, sx, sy, corr
     # assert V_pred.shape == V_trgt.shape
     normx = V_trgt[:, :, 0] - V_pred[:, :, 0]
@@ -101,8 +102,8 @@ def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights):
     result = torch.mean(result)
 
     counts = [0] * len(config.labels)
-    for enc in obs_classes.data.cpu().numpy().copy()[0]:
-        counts[list(config.one_hot_encoding.values()).index(enc.tolist())] += 1
+    for enc in obs_classes:
+        counts[utils.get_index_of_one_hot(enc.tolist())] += 1
     weight_sum = 0
     for i in range(len(counts)):
         weight_sum += (counts[i] * class_weights[i])
