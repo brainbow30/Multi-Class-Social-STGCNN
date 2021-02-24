@@ -119,10 +119,13 @@ def test(KSTEPS=20):
         for label in config.labels:
             # todo mean vs min
             for n in range(num_of_objs):
-                if (ade_ls[label][n] != []):
-                    ade_bigls[label].append(np.mean(ade_ls[label][n]))
-                if (fde_ls[label][n] != []):
-                    fde_bigls[label].append(np.mean(fde_ls[label][n]))
+                ade_mean = np.mean(ade_ls[label][n])
+                if (ade_ls[label][n] != [] and ade_mean < config.outlierValue):
+                    ade_bigls[label].append(ade_mean)
+
+                fde_mean = np.mean(fde_ls[label][n])
+                if (fde_ls[label][n] != [] and fde_mean < config.outlierValue):
+                    fde_bigls[label].append(fde_mean)
     ade_results = []
     fde_results = []
     for label in config.labels:
