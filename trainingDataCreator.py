@@ -96,15 +96,9 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     trainingDataDict = {}
     testDataDict = {}
     validationDataDict = {}
-    for label in labels:
-        testDataDict[label] = {}
     for i in range(samplingRate):
         trainingDataDict[i] = []
-        if not (labels is None):
-            for label in labels:
-                testDataDict[label][i] = []
-        else:
-            testDataDict[i] = []
+        testDataDict[i] = []
         validationDataDict[i] = []
     for location in locations:
         print("Converting " + str(locations.index(location) + 1) + "/" + str(len(locations)) + " Locations...")
@@ -121,14 +115,13 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             maxTestFrame = int(math.floor(len(data) * testSplit))
             maxValidFrame = maxTestFrame + int(math.floor(len(data) * validSplit))
 
-            testData = data[:maxTestFrame]
-            videoTestDataDict = splitIntoLabels(testData, labels)
-            for label in labels:
-                videoTestDataDict[label] = splitData(videoTestDataDict[label])
+            testData = list(
+                filter(lambda row: labels is None or row[4] in labels, data[:maxTestFrame]))
+            videoTestDataDict = splitData(testData, samplingRate=samplingRate)
 
             validationData = list(
                 filter(lambda row: labels is None or row[4] in labels, data[maxTestFrame:maxValidFrame]))
-            videoValidationDataDict = splitData(validationData)
+            videoValidationDataDict = splitData(validationData, samplingRate=samplingRate)
 
             trainingData = data[maxValidFrame:]
             trainingData = list(
@@ -148,63 +141,46 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             # for label in labels:
             #     #todo find better sampling method
             #     trainingData+=(videoTrainingDataDict[label][:desiredLength])
-            videoTrainingDataDict = splitData(trainingData)
+            videoTrainingDataDict = splitData(trainingData, samplingRate=samplingRate)
 
             for i in range(samplingRate):
                 if (videoTrainingDataDict[i] != []):
-                    trainingDataDict[i] = videoTrainingDataDict[i]
-                if not (labels is None):
-                    for label in labels:
-                        if (videoTestDataDict[label][i] != []):
-                            testDataDict[label][i] = videoTestDataDict[label][i]
-                else:
-                    if (videoTestDataDict[i] != []):
-                        testDataDict[i] = videoTestDataDict[i]
+                    trainingDataDict[i] += videoTrainingDataDict[i]
+                if (videoTestDataDict[i] != []):
+                    testDataDict[i] += videoTestDataDict[i]
                 if (videoValidationDataDict[i] != []):
-                    validationDataDict[i] = videoValidationDataDict[i]
+                    validationDataDict[i] += videoValidationDataDict[i]
 
-            currentFolder = os.path.join(outputFolder, location, video)
-            if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
-                os.makedirs(os.path.join(currentFolder, "train"))
-            if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
-                os.makedirs(os.path.join(currentFolder, "test"))
-            if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
-                os.makedirs(os.path.join(currentFolder, "val"))
+        currentFolder = os.path.join(outputFolder, location)
+        if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
+            os.makedirs(os.path.join(currentFolder, "train"))
+        if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
+            os.makedirs(os.path.join(currentFolder, "test"))
+        if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
+            os.makedirs(os.path.join(currentFolder, "val"))
 
-            with open(os.path.join(currentFolder, "classInfo.json"), 'w') as json_file:
-                json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
-            for i in range(samplingRate):
-                trainingData = np.asarray(trainingDataDict[i])
-                validationData = np.asarray(validationDataDict[i])
-                np.savetxt(
-                    os.path.join(currentFolder, "train",
-                                 "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    trainingData, fmt="%s", delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                    encoding=None)
+        with open(os.path.join(currentFolder, "classInfo.json"), 'w') as json_file:
+            json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
+        for i in range(samplingRate):
+            trainingData = np.asarray(trainingDataDict[i])
+            testData = np.asarray(testDataDict[i])
+            validationData = np.asarray(validationDataDict[i])
+            np.savetxt(
+                os.path.join(currentFolder, "train",
+                             "stan" + "_" + location + "_" + str(i) + ".txt"),
+                trainingData, fmt="%s", delimiter=' ', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
+            np.savetxt(
+                os.path.join(currentFolder, "test",
+                             "stan" + "_" + location + "_" + str(i) + ".txt"),
+                testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
 
-                if not (labels is None):
-                    for label in labels:
-                        if (not (os.path.isdir(os.path.join(currentFolder, "test", label)))):
-                            os.makedirs(os.path.join(currentFolder, "test", label))
-                        testData = np.asarray(testDataDict[label][i])
-                        np.savetxt(
-                            os.path.join(currentFolder, "test", label,
-                                         "stan" + "_" + location + "_" + str(i) + ".txt"),
-                            testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                            encoding=None)
-                else:
-                    testData = np.asarray(testDataDict[i])
-                    np.savetxt(
-                        os.path.join(currentFolder, "test",
-                                     "stan" + "_" + location + "_" + str(i) + ".txt"),
-                        testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                        encoding=None)
-
-                np.savetxt(
-                    os.path.join(currentFolder, "val",
-                                 "stan" + "_" + location + "_" + str(i) + ".txt"),
-                    validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                    encoding=None)
+            np.savetxt(
+                os.path.join(currentFolder, "val",
+                             "stan" + "_" + location + "_" + str(i) + ".txt"),
+                validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
+                encoding=None)
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)

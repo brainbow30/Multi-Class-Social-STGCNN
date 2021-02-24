@@ -30,6 +30,8 @@ def to_image_frame(Hinv, loc):
         imgCoord = np.flip(imgCoord)
     return imgCoord
 
+def get_index_of_one_hot(enc):
+    return list(config.one_hot_encoding.values()).index(enc.tolist())
 
 def centerCoord(coordArray):
     coordArray = [float(x) for x in coordArray]

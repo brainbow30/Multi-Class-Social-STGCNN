@@ -15,8 +15,12 @@ from utils import *
 def test(KSTEPS=20):
     global loader_test, model
     model.eval()
-    ade_bigls = []
-    fde_bigls = []
+    ade_bigls = {}
+    fde_bigls = {}
+    for label in config.labels:
+        ade_bigls[label] = []
+        fde_bigls[label] = []
+
     raw_data_dict = {}
     step = 0
     for batch in loader_test:
@@ -66,7 +70,7 @@ def test(KSTEPS=20):
         mvnormal = torchdist.MultivariateNormal(mean, cov)
 
         ### Rel to abs
-        ##obs_traj.shape = torch.Size([1, 6, 2, 8]) Batch, Ped ID, x|y, Seq Len 
+        ##obs_traj.shape = torch.Size([1, 6, 2, 8]) Batch, Ped ID, x|y, Seq Len
 
         # Now sample 20 samples
         ade_ls = {}
@@ -83,10 +87,12 @@ def test(KSTEPS=20):
         raw_data_dict[step]['obs'] = copy.deepcopy(V_x_rel_to_abs)
         raw_data_dict[step]['trgt'] = copy.deepcopy(V_y_rel_to_abs)
         raw_data_dict[step]['pred'] = []
-
-        for n in range(num_of_objs):
-            ade_ls[n] = []
-            fde_ls[n] = []
+        for label in config.labels:
+            ade_ls[label] = {}
+            fde_ls[label] = {}
+            for n in range(num_of_objs):
+                ade_ls[label][n] = []
+                fde_ls[label][n] = []
 
         for k in range(KSTEPS):
 
@@ -97,7 +103,6 @@ def test(KSTEPS=20):
             V_pred_rel_to_abs = nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
                                                        V_x[-1, :, :].copy())
             raw_data_dict[step]['pred'].append(copy.deepcopy(V_pred_rel_to_abs))
-
             # print(V_pred_rel_to_abs.shape) #(12, 3, 2) = seq, ped, location
             for n in range(num_of_objs):
                 pred = []
@@ -108,24 +113,30 @@ def test(KSTEPS=20):
                 target.append(V_y_rel_to_abs[:, n:n + 1, :])
                 obsrvs.append(V_x_rel_to_abs[:, n:n + 1, :])
                 number_of.append(1)
-
-                ade_ls[n].append(ade(pred, target, number_of))
-                fde_ls[n].append(fde(pred, target, number_of))
-
-        for n in range(num_of_objs):
+                label = config.labels[get_index_of_one_hot(obs_classes[0][n].data.cpu().numpy().copy())]
+                ade_ls[label][n].append(ade(pred, target, number_of))
+                fde_ls[label][n].append(fde(pred, target, number_of))
+        for label in config.labels:
             # todo mean vs min
-            ade_bigls.append(np.mean(ade_ls[n]))
-            fde_bigls.append(np.mean(fde_ls[n]))
-    if (len(ade_bigls) > 0):
-        ade_ = sum(ade_bigls) / len(ade_bigls)
-    else:
-        ade_ = math.inf
-    if (len(fde_bigls) > 0):
-        fde_ = sum(fde_bigls) / len(fde_bigls)
-    else:
-        fde_ = math.inf
-
-    return ade_, fde_, raw_data_dict
+            for n in range(num_of_objs):
+                if (ade_ls[label][n] != []):
+                    ade_bigls[label].append(np.mean(ade_ls[label][n]))
+                if (fde_ls[label][n] != []):
+                    fde_bigls[label].append(np.mean(fde_ls[label][n]))
+    ade_results = []
+    fde_results = []
+    for label in config.labels:
+        if (len(ade_bigls[label]) > 0):
+            ade_ = sum(ade_bigls[label]) / len(ade_bigls[label])
+        else:
+            ade_ = math.inf
+        if (len(fde_bigls[label]) > 0):
+            fde_ = sum(fde_bigls[label]) / len(fde_bigls[label])
+        else:
+            fde_ = math.inf
+        ade_results.append(ade_)
+        fde_results.append(fde_)
+    return ade_results, fde_results, raw_data_dict
 
 
 def main():
@@ -154,48 +165,51 @@ def main():
 
     exps = glob.glob(path)
     print('Model being tested are:', exps)
-    for label in config.labels:
-        for exp_path in exps:
-            print("*" * 50)
-            print("Evaluating model:", exp_path)
 
-            model_path = os.path.join(exp_path, 'val_best.pth')
-            args_path = os.path.join(exp_path, 'args.pkl')
-            with open(args_path, 'rb') as f:
-                args = pickle.load(f)
+    for exp_path in exps:
+        print("*" * 50)
+        print("Evaluating model:", exp_path)
 
-            stats = os.path.join(exp_path, 'constant_metrics.pkl')
-            with open(stats, 'rb') as f:
-                cm = pickle.load(f)
-            print("Stats:", cm)
+        model_path = os.path.join(exp_path, 'val_best.pth')
+        args_path = os.path.join(exp_path, 'args.pkl')
+        with open(args_path, 'rb') as f:
+            args = pickle.load(f)
 
-            # Data prep
-            obs_seq_len = args.obs_seq_len
-            pred_seq_len = args.pred_seq_len
-            data_set = os.path.join('trainingData', config.path)
+        stats = os.path.join(exp_path, 'constant_metrics.pkl')
+        with open(stats, 'rb') as f:
+            cm = pickle.load(f)
+        print("Stats:", cm)
 
-            dset_test = TrajectoryDataset(
-                os.path.join(data_set, 'test', label),
-                obs_len=obs_seq_len,
-                pred_len=pred_seq_len,
-                skip=1, norm_lap_matr=True)
+        # Data prep
+        obs_seq_len = args.obs_seq_len
+        pred_seq_len = args.pred_seq_len
+        data_set = os.path.join('trainingData', config.path)
 
-            loader_test = DataLoader(
-                dset_test,
-                batch_size=1,  # This is irrelative to the args batch size parameter
-                shuffle=False,
-                num_workers=1)
+        dset_test = TrajectoryDataset(
+            os.path.join(data_set, 'test'),
+            obs_len=obs_seq_len,
+            pred_len=pred_seq_len,
+            skip=1, norm_lap_matr=True)
 
-            # Defining the model
-            model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                                  output_feat=args.output_size, seq_len=args.obs_seq_len,
-                                  kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
-            model.load_state_dict(torch.load(model_path))
-            model.cuda()
+        loader_test = DataLoader(
+            dset_test,
+            batch_size=1,  # This is irrelative to the args batch size parameter
+            shuffle=False,
+            num_workers=1)
 
-            print(label + " Testing ....")
-            ad, fd, raw_data_dic_ = test()
-            print("ADE:", ad, " FDE:", fd)
+        # Defining the model
+        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                              output_feat=args.output_size, seq_len=args.obs_seq_len,
+                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
+                              hot_enc_length=len(config.labels)).cuda()
+        model.load_state_dict(torch.load(model_path))
+        model.cuda()
+
+        print("Testing ....")
+        ad, fd, raw_data_dic_ = test()
+        for i in range(len(config.labels)):
+            print(config.labels[i] + " results: ")
+            print("ADE:", ad[i], " FDE:", fd[i])
 
 
 if __name__ == '__main__':
