@@ -144,7 +144,7 @@ class st_gcn(nn.Module):
 
 class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
-                 seq_len=8, pred_seq_len=12, kernel_size=3):
+                 seq_len=8, pred_seq_len=12, kernel_size=3, hot_enc_length=1):
         super(social_stgcnn, self).__init__()
         self.conv1 = nn.Conv1d(in_channels=2, out_channels=1, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=3, padding=1)

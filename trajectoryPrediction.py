@@ -25,7 +25,7 @@ class trajectoryPrediction(object):
             nnPath = checkpoint
         self.model = social_stgcnn(n_stgcnn=1, n_txpcnn=5,
                                    output_feat=5, seq_len=8,
-                                   kernel_size=3, pred_seq_len=12).cuda()
+                                   kernel_size=3, pred_seq_len=12, hot_enc_length=len(config.labels)).cuda()
 
         self.model.load_state_dict(
             torch.load(os.path.join(nnPath, "val_best.pth")))

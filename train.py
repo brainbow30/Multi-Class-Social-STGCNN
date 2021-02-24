@@ -158,7 +158,8 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     # Defining the model
     model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                           output_feat=args.output_size, seq_len=args.obs_seq_len,
-                          kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len).cuda()
+                          kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
+                          hot_enc_length=len(config.labels)).cuda()
 
     # Training settings
     # todo sgd vs adam
