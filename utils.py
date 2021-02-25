@@ -31,7 +31,7 @@ def to_image_frame(Hinv, loc):
     return imgCoord
 
 def get_index_of_one_hot(enc):
-    return list(config.one_hot_encoding.values()).index(enc.tolist())
+    return list(config.one_hot_encoding.values()).index(enc)
 
 def centerCoord(coordArray):
     coordArray = [float(x) for x in coordArray]

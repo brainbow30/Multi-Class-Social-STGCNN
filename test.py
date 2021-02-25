@@ -113,7 +113,7 @@ def test(KSTEPS=20):
                 target.append(V_y_rel_to_abs[:, n:n + 1, :])
                 obsrvs.append(V_x_rel_to_abs[:, n:n + 1, :])
                 number_of.append(1)
-                label = config.labels[get_index_of_one_hot(obs_classes[0][n].data.cpu().numpy().copy())]
+                label = config.labels[get_index_of_one_hot(obs_classes[0][n].data.cpu().numpy().copy().tolist())]
                 ade_ls[label][n].append(ade(pred, target, number_of))
                 fde_ls[label][n].append(fde(pred, target, number_of))
         for label in config.labels:
