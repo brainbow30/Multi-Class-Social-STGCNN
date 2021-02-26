@@ -146,8 +146,10 @@ class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
                  seq_len=8, pred_seq_len=12, kernel_size=3, hot_enc_length=1):
         super(social_stgcnn, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=2, out_channels=1, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=3, padding=1)
+        # todo test linear layers vs convolution
+        self.a_conv1 = nn.Conv2d(in_channels=2 * hot_enc_length, out_channels=1, kernel_size=3, padding=1)
+        self.a_conv2 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, padding=1)
+
         self.n_stgcnn = n_stgcnn
         self.n_txpcnn = n_txpcnn
 
@@ -169,9 +171,10 @@ class social_stgcnn(nn.Module):
 
     def forward(self, v, a, hot_enc):
 
-        hot_enc = self.conv1(hot_enc.permute(0, 2, 1)).squeeze().repeat(8, 1).repeat(2, 1, 1).unsqueeze(0)
-        v = torch.cat((v, hot_enc))
-        v = self.conv2(v).squeeze(1).unsqueeze(0)
+        a_hot_enc = torch.cat((hot_enc.repeat(a.shape[1], 1, 1).rot90(), hot_enc.repeat(a.shape[1], 1, 1)), 2)
+        a_hot_enc = self.a_conv1(a_hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(8, 1, 1)
+        a = self.a_conv2(torch.cat((a, a_hot_enc)).unsqueeze(0)).squeeze()
+
         for k in range(self.n_stgcnn):
             v, a = self.st_gcns[k](v, a)
 
