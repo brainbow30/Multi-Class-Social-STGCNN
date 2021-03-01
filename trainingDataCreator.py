@@ -74,6 +74,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                   "outputFolder": outputFolder,
                   "fractionToRemove": config.fractionToRemove,
                   "annotationType": config.annotationType,
+                  "combineLocations": config.combineLocationVideos,
                   "complete": False
                   }
     if (os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json'))):
@@ -144,45 +145,22 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                     testDataDict[i] += videoTestDataDict[i]
                 if (videoValidationDataDict[i] != []):
                     validationDataDict[i] += videoValidationDataDict[i]
+            if (not config.combineLocationVideos):
+                saveClassInfo(class_list, labels, os.path.join(outputFolder, location, video))
+                class_list = []
+                saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate,
+                         os.path.join(outputFolder, location, video))
+                for i in range(samplingRate):
+                    trainingDataDict[i] = []
+                    testDataDict[i] = []
+                    validationDataDict[i] = []
 
-        class_counts = []
-        for label in labels:
-            class_counts.append(class_list.count(label))
-        try:
-            class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
-        except ValueError:
-            class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
+        if (config.combineLocationVideos):
+            saveClassInfo(class_list, labels, os.path.join(outputFolder, location))
+            saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate,
+                     os.path.join(outputFolder, location))
 
-        currentFolder = os.path.join(outputFolder, location)
-        if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
-            os.makedirs(os.path.join(currentFolder, "train"))
-        if (not (os.path.isdir(os.path.join(currentFolder, "test")))):
-            os.makedirs(os.path.join(currentFolder, "test"))
-        if (not (os.path.isdir(os.path.join(currentFolder, "val")))):
-            os.makedirs(os.path.join(currentFolder, "val"))
 
-        with open(os.path.join(currentFolder, "classInfo.json"), 'w') as json_file:
-            json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
-        for i in range(samplingRate):
-            trainingData = np.asarray(trainingDataDict[i])
-            testData = np.asarray(testDataDict[i])
-            validationData = np.asarray(validationDataDict[i])
-            np.savetxt(
-                os.path.join(currentFolder, "train",
-                             "stan" + "_" + location + "_" + str(i) + ".txt"),
-                trainingData, fmt="%s", delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
-            np.savetxt(
-                os.path.join(currentFolder, "test",
-                             "stan" + "_" + location + "_" + str(i) + ".txt"),
-                testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
-
-            np.savetxt(
-                os.path.join(currentFolder, "val",
-                             "stan" + "_" + location + "_" + str(i) + ".txt"),
-                validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
-                encoding=None)
     new_config["complete"] = True
     with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
         json.dump(new_config, json_file)
@@ -212,3 +190,47 @@ def getMeanAndStd(datasetLocation):
     std = torch.std(v_list, 2)
     normalisingData = {"mean": mean.data.cpu().tolist(), "std": std.data.cpu().tolist()}
     return normalisingData
+
+
+def saveClassInfo(class_list, labels, outputFolder):
+    class_counts = []
+    for label in labels:
+        class_counts.append(class_list.count(label))
+    try:
+        class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
+    except ValueError:
+        class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
+    if (not (os.path.isdir(outputFolder))):
+        os.makedirs(outputFolder)
+    with open(os.path.join(outputFolder, "classInfo.json"), 'w') as json_file:
+        json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
+
+
+def saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate, outputFolder):
+    if (not (os.path.isdir(os.path.join(outputFolder, "train")))):
+        os.makedirs(os.path.join(outputFolder, "train"))
+    if (not (os.path.isdir(os.path.join(outputFolder, "test")))):
+        os.makedirs(os.path.join(outputFolder, "test"))
+    if (not (os.path.isdir(os.path.join(outputFolder, "val")))):
+        os.makedirs(os.path.join(outputFolder, "val"))
+
+    for i in range(samplingRate):
+        trainingData = np.asarray(trainingDataDict[i])
+        testData = np.asarray(testDataDict[i])
+        validationData = np.asarray(validationDataDict[i])
+        np.savetxt(
+            os.path.join(outputFolder, "train",
+                         str(i) + ".txt"),
+            trainingData, fmt="%s", delimiter=' ', newline='\n', header='', footer='', comments='# ',
+            encoding=None)
+        np.savetxt(
+            os.path.join(outputFolder, "test",
+                         str(i) + ".txt"),
+            testData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
+            encoding=None)
+
+        np.savetxt(
+            os.path.join(outputFolder, "val",
+                         str(i) + ".txt"),
+            validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
+            encoding=None)
