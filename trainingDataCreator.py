@@ -96,6 +96,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     trainingDataDict = {}
     testDataDict = {}
     validationDataDict = {}
+    class_list = []
     for i in range(samplingRate):
         trainingDataDict[i] = []
         testDataDict[i] = []
@@ -126,14 +127,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             trainingData = data[maxValidFrame:]
             trainingData = list(
                 filter(lambda row: labels is None or row[4] in labels, trainingData))
-            class_list = list(map(lambda row: row[4], trainingData))
-            try:
-                class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
-            except ValueError:
-                class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
-            class_counts = []
-            for label in labels:
-                class_counts.append(class_list.count(label))
             # undersampling
             # videoTrainingDataDict=splitIntoLabels(trainingData, labels)
             # desiredLength = sorted(list(map(lambda label: len(videoTrainingDataDict[label]), videoTrainingDataDict)))[-2]
@@ -146,10 +139,19 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             for i in range(samplingRate):
                 if (videoTrainingDataDict[i] != []):
                     trainingDataDict[i] += videoTrainingDataDict[i]
+                    class_list += (list(map(lambda row: row[4], videoTrainingDataDict[i])))
                 if (videoTestDataDict[i] != []):
                     testDataDict[i] += videoTestDataDict[i]
                 if (videoValidationDataDict[i] != []):
                     validationDataDict[i] += videoValidationDataDict[i]
+
+        class_counts = []
+        for label in labels:
+            class_counts.append(class_list.count(label))
+        try:
+            class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
+        except ValueError:
+            class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
 
         currentFolder = os.path.join(outputFolder, location)
         if (not (os.path.isdir(os.path.join(currentFolder, "train")))):
