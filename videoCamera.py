@@ -66,6 +66,7 @@ class VideoCamera(object):
                 predX, predY = framePrediction[i]
                 pos = [predX, predY]
                 y, x = utils.to_image_frame(self.H, np.array(pos))
+                # todo why needed
                 if (i < len(keys)):
                     cv2.circle(frame, center=(x, y), radius=4, color=self.colours[keys[i]], thickness=-1)
                 if (not (prevFrame is None)):

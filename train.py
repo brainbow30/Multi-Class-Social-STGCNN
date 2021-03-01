@@ -230,7 +230,7 @@ if __name__ == '__main__':
                     checkpoint_labels += ("-" + config.labels[i])
             checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
     parser = argparse.ArgumentParser()
-
+    # todo experiment with different number of graph convolutions
     # Model specific parameters
     parser.add_argument('--input_size', type=int, default=2)
     parser.add_argument('--output_size', type=int, default=5)

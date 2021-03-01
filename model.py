@@ -146,7 +146,7 @@ class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
                  seq_len=8, pred_seq_len=12, kernel_size=3, hot_enc_length=1):
         super(social_stgcnn, self).__init__()
-        # todo test linear layers vs convolution
+
         self.a_conv1 = nn.Conv2d(in_channels=2 * hot_enc_length, out_channels=1, kernel_size=3, padding=1)
         self.a_conv2 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, padding=1)
 
@@ -164,7 +164,6 @@ class social_stgcnn(nn.Module):
             self.tpcnns.append(nn.Conv2d(pred_seq_len, pred_seq_len, 3, padding=1))
         self.tpcnn_ouput = nn.Conv2d(pred_seq_len, pred_seq_len, 3, padding=1)
 
-        # todo investigate swish
         self.prelus = nn.ModuleList()
         for j in range(self.n_txpcnn):
             self.prelus.append(nn.PReLU())
