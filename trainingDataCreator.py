@@ -97,12 +97,12 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
     trainingDataDict = {}
     testDataDict = {}
     validationDataDict = {}
-    class_list = []
-    for i in range(samplingRate):
-        trainingDataDict[i] = []
-        testDataDict[i] = []
-        validationDataDict[i] = []
     for location in locations:
+        class_list = []
+        for i in range(samplingRate):
+            trainingDataDict[i] = []
+            testDataDict[i] = []
+            validationDataDict[i] = []
         print("Converting " + str(locations.index(location) + 1) + "/" + str(len(locations)) + " Locations...")
         videos = os.listdir(os.path.join(inputFolder, location))
         for video in videos:
