@@ -183,7 +183,7 @@ def getMeanAndStd(datasetLocation):
     for cnt, batch in enumerate(loader_train):
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, C_obs = batch
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
         v_list = torch.cat((v_list, V_obs_tmp.squeeze()), 2)
     mean = torch.mean(v_list, 2)

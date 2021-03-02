@@ -72,7 +72,7 @@ def closer_to_zero(current, new_v):
         return False
 
 
-def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights, class_counts):
+def bivariate_loss(V_pred, V_trgt, C_obs, class_weights):
     # mux, muy, sx, sy, corr
     # assert V_pred.shape == V_trgt.shape
     normx = V_trgt[:, :, 0] - V_pred[:, :, 0]
@@ -102,7 +102,7 @@ def bivariate_loss(V_pred, V_trgt, obs_classes, class_weights, class_counts):
     result = torch.mean(result)
 
     counts = [0] * len(config.labels)
-    for enc in obs_classes:
+    for enc in C_obs:
         counts[utils.get_index_of_one_hot(enc.tolist())] += 1
     weight_sum = 0
     for i in range(len(counts)):

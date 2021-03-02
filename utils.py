@@ -214,7 +214,7 @@ class TrajectoryDataset(Dataset):
             loss_mask_list = np.concatenate(loss_mask_list, axis=0)
             non_linear_ped = np.asarray(non_linear_ped)
             # Convert numpy -> Torch Tensor
-            self.obs_classes = torch.tensor(np.stack(seq_list_class)).type(torch.float)
+            self.C_obs = torch.tensor(np.stack(seq_list_class)).type(torch.float)
             self.obs_traj = torch.from_numpy(
                 seq_list[:, :, :self.obs_len]).type(torch.float)
             self.pred_traj = torch.from_numpy(
@@ -262,7 +262,7 @@ class TrajectoryDataset(Dataset):
             self.obs_traj_rel[start:end, :], self.pred_traj_rel[start:end, :],
             self.non_linear_ped[start:end], self.loss_mask[start:end, :],
             self.v_obs[index], self.A_obs[index],
-            self.v_pred[index], self.A_pred[index], self.obs_classes[start:end]
+            self.v_pred[index], self.A_pred[index], self.C_obs[start:end]
 
         ]
         return out

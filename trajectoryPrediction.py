@@ -49,7 +49,7 @@ class trajectoryPrediction(object):
                 seq_list).type(torch.float)
             obs_traj_rel = torch.from_numpy(
                 seq_list_rel).type(torch.float)
-            obs_classes = torch.from_numpy(np.stack(seq_list_classes)).type(torch.float).unsqueeze(0).cuda()
+            C_obs = torch.from_numpy(np.stack(seq_list_classes)).type(torch.float).unsqueeze(0).cuda()
             V_obs = []
             A_obs = []
             v_, a_ = utils.seq_to_graph(obs_traj, obs_traj_rel, True)
@@ -59,7 +59,7 @@ class trajectoryPrediction(object):
             V_obs = torch.stack(V_obs).cuda()
             A_obs = torch.stack(A_obs).cuda()
             V_obs_tmp = V_obs.permute(0, 3, 1, 2)
-            V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze(), obs_classes)
+            V_pred, _ = self.model(V_obs_tmp, A_obs.squeeze(), C_obs)
             V_pred = V_pred.permute(0, 2, 3, 1)
             V_pred = V_pred.squeeze()
             num_of_objs = obs_traj_rel.shape[0]

@@ -169,10 +169,10 @@ class social_stgcnn(nn.Module):
             self.prelus.append(nn.PReLU())
 
     def forward(self, v, a, hot_enc):
-
-        a_hot_enc = torch.cat((hot_enc.repeat(a.shape[1], 1, 1).rot90(), hot_enc.repeat(a.shape[1], 1, 1)), 2)
-        a_hot_enc = self.a_conv1(a_hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(8, 1, 1)
-        a = self.a_conv2(torch.cat((a, a_hot_enc)).unsqueeze(0)).squeeze()
+        hot_enc = hot_enc.repeat(a.shape[1], 1, 1)
+        hot_enc = torch.cat((hot_enc.rot90(), hot_enc), 2)
+        c = self.a_conv1(hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(8, 1, 1)
+        a = self.a_conv2(torch.cat((a, c)).unsqueeze(0)).squeeze()
 
         for k in range(self.n_stgcnn):
             v, a = self.st_gcns[k](v, a)

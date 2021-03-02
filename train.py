@@ -26,13 +26,13 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights, class_c
         # Get data
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, C_obs = batch
         optimizer.zero_grad()
         # Forward
         # V_obs = batch,seq,node,feat
         # V_obs_tmp = batch,feat,seq,node
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
-        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), obs_classes)
+        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), C_obs)
 
         V_pred = V_pred.permute(0, 2, 3, 1).contiguous()
 
@@ -41,7 +41,7 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights, class_c
         V_pred = V_pred.squeeze()
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
-            l = graph_loss(V_pred, V_tr, obs_classes[0], class_weights, class_counts)
+            l = graph_loss(V_pred, V_tr, C_obs[0], class_weights)
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -78,11 +78,11 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         # Get data
         batch = [tensor.cuda() for tensor in batch]
         obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr, obs_classes = batch
+        loss_mask, V_obs, A_obs, V_tr, A_tr, C_obs = batch
 
         V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
 
-        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), obs_classes)
+        V_pred, _ = model(V_obs_tmp, A_obs.squeeze(), C_obs)
 
         V_pred = V_pred.permute(0, 2, 3, 1).contiguous()
 
@@ -91,7 +91,7 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         V_pred = V_pred.squeeze()
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
-            l = graph_loss(V_pred, V_tr, obs_classes[0], class_weights, class_counts)
+            l = graph_loss(V_pred, V_tr, C_obs[0], class_weights)
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -113,8 +113,8 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, 'val_best.pth'))  # OK
 
 
-def graph_loss(V_pred, V_target, obs_classes, class_weights, class_counts):
-    return bivariate_loss(V_pred, V_target, obs_classes, class_weights, class_counts)
+def graph_loss(V_pred, V_target, C_obs, class_weights):
+    return bivariate_loss(V_pred, V_target, C_obs, class_weights)
 
 
 def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
