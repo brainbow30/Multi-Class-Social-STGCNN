@@ -1,5 +1,6 @@
 import copy
 import glob
+import json
 import pickle
 from multiprocessing.spawn import freeze_support
 
@@ -17,9 +18,13 @@ def test(KSTEPS=20):
     model.eval()
     ade_bigls = {}
     fde_bigls = {}
+    a2de_bigls = {}
+    afde_bigls = {}
     for label in config.labels:
         ade_bigls[label] = []
         fde_bigls[label] = []
+        a2de_bigls[label] = []
+        afde_bigls[label] = []
 
     raw_data_dict = {}
     step = 0
@@ -66,8 +71,11 @@ def test(KSTEPS=20):
         cov[:, :, 1, 0] = corr * sx * sy
         cov[:, :, 1, 1] = sy * sy
         mean = V_pred[:, :, 0:2]
-
-        mvnormal = torchdist.MultivariateNormal(mean, cov)
+        try:
+            mvnormal = torchdist.MultivariateNormal(mean, cov)
+        except RuntimeError:
+            print("distribution error")
+            continue
 
         ### Rel to abs
         ##obs_traj.shape = torch.Size([1, 6, 2, 8]) Batch, Ped ID, x|y, Seq Len
@@ -122,26 +130,35 @@ def test(KSTEPS=20):
                 if (ade_ls[label][n] != []):
                     ade_mean = np.mean(ade_ls[label][n])
                     if (ade_mean < config.outlierValue):
-                        ade_bigls[label].append(ade_mean)
+                        a2de_bigls[label].append(ade_mean)
+                        ade_bigls[label].append(np.min(ade_ls[label][n]))
 
                 if (fde_ls[label][n] != []):
                     fde_mean = np.mean(fde_ls[label][n])
                     if (fde_mean < config.outlierValue):
-                        fde_bigls[label].append(fde_mean)
+                        afde_bigls[label].append(fde_mean)
+                        fde_bigls[label].append(np.min(fde_ls[label][n]))
     ade_results = []
     fde_results = []
+    a2de_results = []
+    afde_results = []
     for label in config.labels:
         if (len(ade_bigls[label]) > 0):
             ade_ = sum(ade_bigls[label]) / len(ade_bigls[label])
+            a2de_ = sum(a2de_bigls[label]) / len(a2de_bigls[label])
         else:
             ade_ = math.inf
+            a2de_ = math.inf
         if (len(fde_bigls[label]) > 0):
             fde_ = sum(fde_bigls[label]) / len(fde_bigls[label])
+            afde_ = sum(afde_bigls[label]) / len(afde_bigls[label])
         else:
             fde_ = math.inf
         ade_results.append(ade_)
         fde_results.append(fde_)
-    return ade_results, fde_results, raw_data_dict
+        a2de_results.append(a2de_)
+        afde_results.append(afde_)
+    return ade_results, fde_results, a2de_results, afde_results, raw_data_dict
 
 
 def main():
@@ -201,7 +218,6 @@ def main():
             batch_size=1,  # This is irrelative to the args batch size parameter
             shuffle=False,
             num_workers=1)
-
         # Defining the model
         model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                               output_feat=args.output_size, seq_len=args.obs_seq_len,
@@ -211,10 +227,11 @@ def main():
         model.cuda()
 
         print("Testing ....")
-        ad, fd, raw_data_dic_ = test()
+        ad, fd, a2d, afd, raw_data_dic_ = test()
         for i in range(len(config.labels)):
             print(config.labels[i] + " results: ")
             print("ADE:", ad[i], " FDE:", fd[i])
+            print("A2DE:", a2d[i], " AFDE:", afd[i])
 
 
 if __name__ == '__main__':
