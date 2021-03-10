@@ -1,6 +1,4 @@
 import argparse
-import json
-import pickle
 from multiprocessing.spawn import freeze_support
 
 from torch import optim
@@ -12,7 +10,7 @@ from model import *
 from utils import *
 
 
-def train(model, epoch, optimizer, trainingData, metrics, class_weights, class_counts):
+def train(model, epoch, optimizer, trainingData, metrics, class_weights):
     model.train()
     loss_batch = 0
     batch_count = 0
@@ -64,7 +62,7 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights, class_c
     metrics['train_loss'].append(loss_batch / batch_count)
 
 
-def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metrics, class_weights, class_counts):
+def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metrics, class_weights):
     model.eval()
     loss_batch = 0
     batch_count = 0
@@ -131,12 +129,12 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     with open(os.path.join(data_set, 'classInfo.json')) as f:
         class_info = json.load(f)
         class_weights = class_info["class_weights"]
-        class_counts = class_info["class_counts"]
+        # class_counts = class_info["class_counts"]
     dset_train = TrajectoryDataset(
         os.path.join(data_set, 'train'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True)
+        skip=1, norm_lap_matr=True, scaleData=False)
     loader_train = DataLoader(
         dset_train,
         batch_size=1,  # This is irrelative to the args batch size parameter
@@ -147,7 +145,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         os.path.join(data_set, 'val'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True)
+        skip=1, norm_lap_matr=True, scaleData=False)
 
     loader_val = DataLoader(
         dset_val,
@@ -155,6 +153,23 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         shuffle=True,
         num_workers=0)
 
+    # with open(os.path.join(data_set, 'scalers.pkl'), 'wb') as output:
+    #     pickle.dump(dset_train.vScaler, output, pickle.HIGHEST_PROTOCOL)
+    if not (config.labels is None):
+        checkpoint_labels = ""
+        for i in range(len(config.labels)):
+            if (i == 0):
+                checkpoint_labels += config.labels[i]
+            else:
+                checkpoint_labels += ("-" + config.labels[i])
+        checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+
+    # vMean, vStd = getMeanAndStd(loader_train)
+    # normalisingData = {"v_mean": vMean.data.cpu().tolist(), "v_std": vStd.data.cpu().tolist()}
+    # with open(os.path.join(checkpoint_dir, 'normalising.json'), 'w') as json_file:
+    #     json.dump(normalisingData, json_file)
     # Defining the model
     model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                           output_feat=args.output_size, seq_len=args.obs_seq_len,
@@ -168,17 +183,6 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     if args.use_lrschd:
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_sh_rate, gamma=0.2)
 
-    if not (config.labels is None):
-        checkpoint_labels = ""
-        for i in range(len(config.labels)):
-            if (i == 0):
-                checkpoint_labels += config.labels[i]
-            else:
-                checkpoint_labels += ("-" + config.labels[i])
-        checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
-
     with open(os.path.join(checkpoint_dir, 'args.pkl'), 'wb') as fp:
         pickle.dump(args, fp)
 
@@ -191,8 +195,8 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
 
     print('Training started ...')
     for epoch in range(num_epochs):
-        train(model, epoch, optimizer, loader_train, metrics, class_weights, class_counts)
-        valid(model, epoch, checkpoint_dir, loader_val, metrics, constant_metrics, class_weights, class_counts)
+        train(model, epoch, optimizer, loader_train, metrics, class_weights)
+        valid(model, epoch, checkpoint_dir, loader_val, metrics, constant_metrics, class_weights)
         if args.use_lrschd:
             scheduler.step()
 

@@ -4,6 +4,7 @@ import os
 import networkx as nx
 import numpy as np
 import torch
+from sklearn.preprocessing import RobustScaler
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
@@ -120,7 +121,7 @@ class TrajectoryDataset(Dataset):
 
     def __init__(
             self, data_dir, obs_len=8, pred_len=8, skip=1, threshold=0.002,
-            min_ped=1, delim='space', norm_lap_matr=True):
+            min_ped=1, delim='space', norm_lap_matr=True, scaleData=False, scaler=None):
         """
         Args:
         - data_dir: Directory containing dataset files in the format
@@ -142,7 +143,10 @@ class TrajectoryDataset(Dataset):
         self.seq_len = self.obs_len + self.pred_len
         self.delim = delim
         self.norm_lap_matr = norm_lap_matr
-
+        if (scaleData and scaler is None):
+            self.vScaler = RobustScaler()
+        else:
+            self.vScaler = scaler
         all_files = os.listdir(self.data_dir)
         all_files = [os.path.join(self.data_dir, _path) for _path in all_files]
         num_peds_in_seq = []
@@ -249,6 +253,20 @@ class TrajectoryDataset(Dataset):
                                       self.norm_lap_matr)
                 self.v_pred.append(v_.clone())
                 self.A_pred.append(a_.clone())
+            if (scaleData):
+                v_obs_list = []
+                for v in self.v_obs:
+                    for obj in v.data.cpu().tolist():
+                        v_obs_list += obj
+                if (scaler is None):
+                    self.vScaler.fit(v_obs_list)
+                for i in range(len(self.v_obs)):
+                    v = self.v_obs[i]
+                    new_v = []
+                    for obj in v.data.cpu().tolist():
+                        new_v.append(self.vScaler.transform(obj))
+                    self.v_obs[i] = torch.tensor(new_v).type(torch.float)
+
             pbar.close()
 
     def __len__(self):

@@ -1,7 +1,5 @@
 import copy
 import glob
-import json
-import pickle
 from multiprocessing.spawn import freeze_support
 
 import torch.distributions.multivariate_normal as torchdist
@@ -13,7 +11,7 @@ from model import social_stgcnn
 from utils import *
 
 
-def test(KSTEPS=20):
+def test(vScaler, KSTEPS=20):
     global loader_test, model
     model.eval()
     ade_bigls = {}
@@ -105,11 +103,19 @@ def test(KSTEPS=20):
         for k in range(KSTEPS):
 
             V_pred = mvnormal.sample()
+
             V_pred[:, :, :1] = V_pred[:, :, :1]
             V_pred[:, :, 1:] = V_pred[:, :, 1:]
-            # V_pred = seq_to_nodes(pred_traj_gt.data.numpy().copy())
-            V_pred_rel_to_abs = nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
-                                                       V_x[-1, :, :].copy())
+            if (vScaler is None):
+                V_pred_rel_to_abs = nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
+                                                           V_x[-1, :, :].copy())
+            else:
+                new_V_pred = []
+                for i in range(len(V_pred)):
+                    new_V_pred.append(vScaler.inverse_transform(V_pred[i].data.cpu().tolist()))
+                # V_pred = seq_to_nodes(pred_traj_gt.data.numpy().copy())
+                V_pred_rel_to_abs = nodes_rel_to_nodes_abs(np.array(new_V_pred).copy(),
+                                                           V_x[-1, :, :].copy())
             raw_data_dict[step]['pred'].append(copy.deepcopy(V_pred_rel_to_abs))
             # print(V_pred_rel_to_abs.shape) #(12, 3, 2) = seq, ped, location
             for n in range(num_of_objs):
@@ -125,7 +131,6 @@ def test(KSTEPS=20):
                 ade_ls[label][n].append(ade(pred, target, number_of))
                 fde_ls[label][n].append(fde(pred, target, number_of))
         for label in config.labels:
-            # todo mean vs min
             for n in range(num_of_objs):
                 if (ade_ls[label][n] != []):
                     ade_mean = np.mean(ade_ls[label][n])
@@ -153,6 +158,7 @@ def test(KSTEPS=20):
             fde_ = sum(fde_bigls[label]) / len(fde_bigls[label])
             afde_ = sum(afde_bigls[label]) / len(afde_bigls[label])
         else:
+            afde_ = math.inf
             fde_ = math.inf
         ade_results.append(ade_)
         fde_results.append(fde_)
@@ -206,13 +212,22 @@ def main():
         obs_seq_len = args.obs_seq_len
         pred_seq_len = args.pred_seq_len
         data_set = os.path.join('trainingData', config.path)
+        try:
+            with open(os.path.join(data_set, 'scalers.pkl'), 'rb') as input:
+                vScaler = pickle.load(input)
 
-        dset_test = TrajectoryDataset(
-            os.path.join(data_set, 'test'),
-            obs_len=obs_seq_len,
-            pred_len=pred_seq_len,
-            skip=1, norm_lap_matr=True)
-
+            dset_test = TrajectoryDataset(
+                os.path.join(data_set, 'test'),
+                obs_len=obs_seq_len,
+                pred_len=pred_seq_len,
+                skip=1, norm_lap_matr=True, scaleData=True, scaler=vScaler)
+        except:
+            vScaler = None
+            dset_test = TrajectoryDataset(
+                os.path.join(data_set, 'test'),
+                obs_len=obs_seq_len,
+                pred_len=pred_seq_len,
+                skip=1, norm_lap_matr=True)
         loader_test = DataLoader(
             dset_test,
             batch_size=1,  # This is irrelative to the args batch size parameter
@@ -227,7 +242,7 @@ def main():
         model.cuda()
 
         print("Testing ....")
-        ad, fd, a2d, afd, raw_data_dic_ = test()
+        ad, fd, a2d, afd, raw_data_dic_ = test(vScaler)
         for i in range(len(config.labels)):
             print(config.labels[i] + " results: ")
             print("ADE:", ad[i], " FDE:", fd[i])

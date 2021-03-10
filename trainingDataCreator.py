@@ -4,12 +4,9 @@ import os
 import shutil
 
 import numpy as np
-import torch
 from sklearn.utils import compute_class_weight
-from torch.utils.data import DataLoader
 
 import config
-from utils import TrajectoryDataset
 
 
 def rowConversion(row):
@@ -166,30 +163,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
         json.dump(new_config, json_file)
 
 
-def getMeanAndStd(datasetLocation):
-    obs_seq_len = 8
-    pred_seq_len = 12
-    dset_train = TrajectoryDataset(
-        os.path.join(datasetLocation, 'train'),
-        obs_len=obs_seq_len,
-        pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True)
-    loader_train = DataLoader(
-        dset_train,
-        batch_size=1,  # This is irrelative to the args batch size parameter
-        shuffle=True,
-        num_workers=0)
-    v_list = torch.FloatTensor().cuda()
-    for cnt, batch in enumerate(loader_train):
-        batch = [tensor.cuda() for tensor in batch]
-        obs_traj, pred_traj_gt, obs_traj_rel, pred_traj_gt_rel, non_linear_ped, \
-        loss_mask, V_obs, A_obs, V_tr, A_tr, C_obs = batch
-        V_obs_tmp = V_obs.permute(0, 3, 1, 2).contiguous()
-        v_list = torch.cat((v_list, V_obs_tmp.squeeze()), 2)
-    mean = torch.mean(v_list, 2)
-    std = torch.std(v_list, 2)
-    normalisingData = {"mean": mean.data.cpu().tolist(), "std": std.data.cpu().tolist()}
-    return normalisingData
 
 
 def saveClassInfo(class_list, labels, outputFolder):
