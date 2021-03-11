@@ -12,7 +12,7 @@ from model import social_stgcnn
 from utils import *
 
 
-def test(vScaler, KSTEPS=20):
+def test(vScaler=None, KSTEPS=20):
     global loader_test, model
     model.eval()
     ade_bigls = {}
@@ -213,16 +213,16 @@ def main():
         obs_seq_len = args.obs_seq_len
         pred_seq_len = args.pred_seq_len
         data_set = os.path.join('trainingData', config.path)
-        try:
+        if (config.scale):
             with open(os.path.join(data_set, 'scalers.pkl'), 'rb') as input:
                 vScaler = pickle.load(input)
-
+            print("Using Scaler")
             dset_test = TrajectoryDataset(
                 os.path.join(data_set, 'test'),
                 obs_len=obs_seq_len,
                 pred_len=pred_seq_len,
                 skip=1, norm_lap_matr=True, scaleData=True, scaler=vScaler)
-        except:
+        else:
             vScaler = None
             dset_test = TrajectoryDataset(
                 os.path.join(data_set, 'test'),
@@ -243,7 +243,7 @@ def main():
         model.cuda()
 
         print("Testing ....")
-        ad, fd, a2d, afd, raw_data_dic_ = test(vScaler)
+        ad, fd, a2d, afd, raw_data_dic_ = test(vScaler=vScaler)
         for i in range(len(config.labels)):
             print(config.labels[i] + " results: ")
             print("ADE:", ad[i], " FDE:", fd[i])

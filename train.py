@@ -136,18 +136,20 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         os.path.join(data_set, 'train'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True, scaleData=False)
+        skip=1, norm_lap_matr=True, scaleData=config.scale)
     loader_train = DataLoader(
         dset_train,
         batch_size=1,  # This is irrelative to the args batch size parameter
         shuffle=True,
         num_workers=0)
-
+    scaleVal = False
+    if (config.scale):
+        scaleVal = dset_train.vScaler
     dset_val = TrajectoryDataset(
         os.path.join(data_set, 'val'),
         obs_len=obs_seq_len,
         pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True, scaleData=False)
+        skip=1, norm_lap_matr=True, scaleData=scaleVal)
 
     loader_val = DataLoader(
         dset_val,

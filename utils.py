@@ -145,7 +145,7 @@ class TrajectoryDataset(Dataset):
         self.norm_lap_matr = norm_lap_matr
         if (scaleData and scaler is None):
             self.vScaler = RobustScaler()
-        else:
+        elif (scaleData):
             self.vScaler = scaler
         all_files = os.listdir(self.data_dir)
         all_files = [os.path.join(self.data_dir, _path) for _path in all_files]
