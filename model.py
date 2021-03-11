@@ -148,7 +148,7 @@ class social_stgcnn(nn.Module):
         super(social_stgcnn, self).__init__()
 
         self.a_conv1 = nn.Conv2d(in_channels=2 * hot_enc_length, out_channels=1, kernel_size=3, padding=1)
-        self.a_conv2 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, padding=1)
+        self.a_conv2 = nn.Conv2d(in_channels=2 * seq_len, out_channels=seq_len, kernel_size=3, padding=1)
 
         self.n_stgcnn = n_stgcnn
         self.n_txpcnn = n_txpcnn
@@ -170,8 +170,9 @@ class social_stgcnn(nn.Module):
 
     def forward(self, v, a, hot_enc):
         hot_enc = hot_enc.repeat(a.shape[1], 1, 1)
-        hot_enc = torch.cat((hot_enc.rot90(), hot_enc), 2)
-        c = self.a_conv1(hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(8, 1, 1)
+        hot_enc = torch.cat((hot_enc.rot90(k=-1), hot_enc), 2)
+        c = self.a_conv1(hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(a.shape[0], 1, 1)
+        # todo try multiplication
         a = self.a_conv2(torch.cat((a, c)).unsqueeze(0)).squeeze()
 
         for k in range(self.n_stgcnn):
