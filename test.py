@@ -14,6 +14,7 @@ from utils import *
 
 def test(vScaler=None, KSTEPS=20):
     global loader_test, model
+    errors = 0
     model.eval()
     ade_bigls = {}
     fde_bigls = {}
@@ -73,7 +74,7 @@ def test(vScaler=None, KSTEPS=20):
         try:
             mvnormal = torchdist.MultivariateNormal(mean, cov)
         except RuntimeError:
-            print("distribution error")
+            errors += 1
             continue
 
         ### Rel to abs
@@ -165,7 +166,7 @@ def test(vScaler=None, KSTEPS=20):
         fde_results.append(fde_)
         a2de_results.append(a2de_)
         afde_results.append(afde_)
-    return ade_results, fde_results, a2de_results, afde_results, raw_data_dict
+    return ade_results, fde_results, a2de_results, afde_results, raw_data_dict, errors
 
 
 def main():
@@ -243,7 +244,8 @@ def main():
         model.cuda()
 
         print("Testing ....")
-        ad, fd, a2d, afd, raw_data_dic_ = test(vScaler=vScaler)
+        ad, fd, a2d, afd, raw_data_dic_, errors = test(vScaler=vScaler)
+        print("Errors: ", errors)
         for i in range(len(config.labels)):
             print(config.labels[i] + " results: ")
             print("ADE:", ad[i], " FDE:", fd[i])
