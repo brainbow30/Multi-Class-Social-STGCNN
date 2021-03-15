@@ -146,6 +146,8 @@ class social_stgcnn(nn.Module):
     def __init__(self, n_stgcnn=1, n_txpcnn=1, input_feat=2, output_feat=5,
                  seq_len=8, pred_seq_len=12, kernel_size=3, hot_enc_length=1):
         super(social_stgcnn, self).__init__()
+        self.v_norm = nn.Conv2d(in_channels=seq_len, out_channels=seq_len, kernel_size=3, padding=1)
+        self.a_norm = nn.Linear(in_features=seq_len, out_features=seq_len)
 
         self.a_conv1 = nn.Conv2d(in_channels=2 * hot_enc_length, out_channels=1, kernel_size=3, padding=1)
         self.a_conv2 = nn.Conv2d(in_channels=2 * seq_len, out_channels=seq_len, kernel_size=3, padding=1)
@@ -169,6 +171,12 @@ class social_stgcnn(nn.Module):
             self.prelus.append(nn.PReLU())
 
     def forward(self, v, a, hot_enc):
+        # todo linear norm layers
+        # pedestrians that are within 1 pixel have same similarity as person they are next to
+        # a = torch.where(a > 1, torch.ones_like(a), a)
+        # combine class labels with adjacency matrix
+        v = self.v_norm(v.permute(0, 2, 1, 3)).permute(0, 2, 1, 3)
+        a = self.a_norm(a.permute(1, 2, 0)).permute(2, 0, 1)
         hot_enc = hot_enc.repeat(a.shape[1], 1, 1)
         hot_enc = torch.cat((hot_enc.rot90(k=-1), hot_enc), 2)
         c = self.a_conv1(hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(a.shape[0], 1, 1)
@@ -178,7 +186,7 @@ class social_stgcnn(nn.Module):
         for k in range(self.n_stgcnn):
             v, a = self.st_gcns[k](v, a)
 
-        v = v.view(v.shape[0], v.shape[2], v.shape[1], v.shape[3])
+        v = v.permute(0, 2, 1, 3)
 
         v = self.prelus[0](self.tpcnns[0](v))
 
@@ -186,6 +194,6 @@ class social_stgcnn(nn.Module):
             v = self.prelus[k](self.tpcnns[k](v)) + v
 
         v = self.tpcnn_ouput(v)
-        v = v.view(v.shape[0], v.shape[2], v.shape[1], v.shape[3])
+        v = v.permute(0, 2, 1, 3)
 
         return v, a
