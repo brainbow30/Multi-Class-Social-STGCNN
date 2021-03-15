@@ -171,12 +171,13 @@ class social_stgcnn(nn.Module):
             self.prelus.append(nn.PReLU())
 
     def forward(self, v, a, hot_enc):
-        # todo linear norm layers
         # pedestrians that are within 1 pixel have same similarity as person they are next to
         # a = torch.where(a > 1, torch.ones_like(a), a)
-        # combine class labels with adjacency matrix
+
+        # normalise inputs with layers
         v = self.v_norm(v.permute(0, 2, 1, 3)).permute(0, 2, 1, 3)
         a = self.a_norm(a.permute(1, 2, 0)).permute(2, 0, 1)
+        # combine class labels with adjacency matrix
         hot_enc = hot_enc.repeat(a.shape[1], 1, 1)
         hot_enc = torch.cat((hot_enc.rot90(k=-1), hot_enc), 2)
         c = self.a_conv1(hot_enc.unsqueeze(0).permute(0, 3, 1, 2)).squeeze().repeat(a.shape[0], 1, 1)
