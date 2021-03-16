@@ -215,7 +215,7 @@ def main():
         pred_seq_len = args.pred_seq_len
         data_set = os.path.join('trainingData', config.path)
         if (config.scale):
-            with open(os.path.join(data_set, 'scalers.pkl'), 'rb') as input:
+            with open(os.path.join(exp_path, 'scalers.pkl'), 'rb') as input:
                 vScaler = pickle.load(input)
             print("Using Scaler")
             dset_test = TrajectoryDataset(

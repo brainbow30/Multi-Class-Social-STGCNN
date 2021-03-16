@@ -142,14 +142,18 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         batch_size=1,  # This is irrelative to the args batch size parameter
         shuffle=True,
         num_workers=0)
-    scaleVal = False
     if (config.scale):
-        scaleVal = dset_train.vScaler
-    dset_val = TrajectoryDataset(
-        os.path.join(data_set, 'val'),
-        obs_len=obs_seq_len,
-        pred_len=pred_seq_len,
-        skip=1, norm_lap_matr=True, scaleData=scaleVal)
+        dset_val = TrajectoryDataset(
+            os.path.join(data_set, 'val'),
+            obs_len=obs_seq_len,
+            pred_len=pred_seq_len,
+            skip=1, norm_lap_matr=True, scaleData=True, scaler=dset_train.vScaler)
+    else:
+        dset_val = TrajectoryDataset(
+            os.path.join(data_set, 'val'),
+            obs_len=obs_seq_len,
+            pred_len=pred_seq_len,
+            skip=1, norm_lap_matr=True)
 
     loader_val = DataLoader(
         dset_val,
@@ -157,8 +161,6 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         shuffle=True,
         num_workers=0)
 
-    # with open(os.path.join(data_set, 'scalers.pkl'), 'wb') as output:
-    #     pickle.dump(dset_train.vScaler, output, pickle.HIGHEST_PROTOCOL)
     if not (config.labels is None):
         checkpoint_labels = ""
         for i in range(len(config.labels)):
@@ -169,11 +171,9 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
+    with open(os.path.join(checkpoint_dir, 'scalers.pkl'), 'wb') as output:
+        pickle.dump(dset_train.vScaler, output, pickle.HIGHEST_PROTOCOL)
 
-    # vMean, vStd = getMeanAndStd(loader_train)
-    # normalisingData = {"v_mean": vMean.data.cpu().tolist(), "v_std": vStd.data.cpu().tolist()}
-    # with open(os.path.join(checkpoint_dir, 'normalising.json'), 'w') as json_file:
-    #     json.dump(normalisingData, json_file)
     # Defining the model
     model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                           output_feat=args.output_size, seq_len=args.obs_seq_len,
