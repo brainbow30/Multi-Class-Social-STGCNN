@@ -142,7 +142,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         batch_size=1,  # This is irrelative to the args batch size parameter
         shuffle=True,
         num_workers=0)
-    if (config.scale):
+    if config.scale:
         dset_val = TrajectoryDataset(
             os.path.join(data_set, 'val'),
             obs_len=obs_seq_len,
@@ -164,7 +164,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
     if not (config.labels is None):
         checkpoint_labels = ""
         for i in range(len(config.labels)):
-            if (i == 0):
+            if i == 0:
                 checkpoint_labels += config.labels[i]
             else:
                 checkpoint_labels += ("-" + config.labels[i])
@@ -222,7 +222,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
 
 if __name__ == '__main__':
     freeze_support()
-    if (config.annotationType == "stanford"):
+    if config.annotationType == "stanford":
         print("Converting Stanford Dataset...")
         trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
                                                samplingRate=config.samplingRate,
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         if not (config.labels is None):
             checkpoint_labels = ""
             for i in range(len(config.labels)):
-                if (i == 0):
+                if i == 0:
                     checkpoint_labels += config.labels[i]
                 else:
                     checkpoint_labels += ("-" + config.labels[i])

@@ -108,7 +108,7 @@ def test(vScaler=None, KSTEPS=20):
 
             V_pred[:, :, :1] = V_pred[:, :, :1]
             V_pred[:, :, 1:] = V_pred[:, :, 1:]
-            if (vScaler is None):
+            if vScaler is None:
                 V_pred_rel_to_abs = nodes_rel_to_nodes_abs(V_pred.data.cpu().numpy().squeeze().copy(),
                                                            V_x[-1, :, :].copy())
             else:
@@ -134,15 +134,15 @@ def test(vScaler=None, KSTEPS=20):
                 fde_ls[label][n].append(fde(pred, target, number_of))
         for label in config.labels:
             for n in range(num_of_objs):
-                if (ade_ls[label][n] != []):
+                if ade_ls[label][n]:
                     ade_mean = np.mean(ade_ls[label][n])
-                    if (ade_mean < config.outlierValue):
+                    if ade_mean < config.outlierValue:
                         a2de_bigls[label].append(ade_mean)
                         ade_bigls[label].append(np.min(ade_ls[label][n]))
 
-                if (fde_ls[label][n] != []):
+                if fde_ls[label][n]:
                     fde_mean = np.mean(fde_ls[label][n])
-                    if (fde_mean < config.outlierValue):
+                    if fde_mean < config.outlierValue:
                         afde_bigls[label].append(fde_mean)
                         fde_bigls[label].append(np.min(fde_ls[label][n]))
     ade_results = []
@@ -150,13 +150,13 @@ def test(vScaler=None, KSTEPS=20):
     a2de_results = []
     afde_results = []
     for label in config.labels:
-        if (len(ade_bigls[label]) > 0):
+        if len(ade_bigls[label]) > 0:
             ade_ = sum(ade_bigls[label]) / len(ade_bigls[label])
             a2de_ = sum(a2de_bigls[label]) / len(a2de_bigls[label])
         else:
             ade_ = math.inf
             a2de_ = math.inf
-        if (len(fde_bigls[label]) > 0):
+        if len(fde_bigls[label]) > 0:
             fde_ = sum(fde_bigls[label]) / len(fde_bigls[label])
             afde_ = sum(afde_bigls[label]) / len(afde_bigls[label])
         else:
@@ -175,12 +175,12 @@ def main():
         trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
                                                samplingRate=config.samplingRate,
                                                labels=config.labels)
-    if (config.checkpoint is None):
+    if config.checkpoint is None:
         path = os.path.join('checkpoint', config.path + "-" + str(config.samplingRate))
         if not (config.labels is None):
             checkpoint_labels = ""
             for i in range(len(config.labels)):
-                if (i == 0):
+                if i == 0:
                     checkpoint_labels += config.labels[i]
                 else:
                     checkpoint_labels += ("-" + config.labels[i])
@@ -214,7 +214,7 @@ def main():
         obs_seq_len = args.obs_seq_len
         pred_seq_len = args.pred_seq_len
         data_set = os.path.join('trainingData', config.path)
-        if (config.scale):
+        if config.scale:
             with open(os.path.join(exp_path, 'scalers.pkl'), 'rb') as input:
                 vScaler = pickle.load(input)
             print("Using Scaler")

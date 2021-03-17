@@ -37,7 +37,7 @@ def fde(predAll, targetAll, count_):
         for i in range(N):
             for t in range(T - 1, T):
                 sum_ += math.sqrt((pred[i, t, 0] - target[i, t, 0]) ** 2 + (pred[i, t, 1] - target[i, t, 1]) ** 2)
-        sum_all += sum_ / (N)
+        sum_all += sum_ / N
 
     return sum_all / All
 

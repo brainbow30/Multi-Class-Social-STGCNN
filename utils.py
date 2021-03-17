@@ -27,12 +27,14 @@ def to_image_frame(Hinv, loc):
         locHomogenous = np.dot(Hinv, locHomogenous.astype(float))  # to camera frame
         locXYZ = locHomogenous / locHomogenous[2]  # to pixels (from millimeters)
         imgCoord = locXYZ[:2].astype(int)
-    if (np.array_equal(np.eye(3), Hinv)):
+    if np.array_equal(np.eye(3), Hinv):
         imgCoord = np.flip(imgCoord)
     return imgCoord
 
+
 def get_index_of_one_hot(enc):
     return list(config.one_hot_encoding.values()).index(enc)
+
 
 def centerCoord(coordArray):
     coordArray = [float(x) for x in coordArray]
@@ -76,7 +78,7 @@ def anorm(p1, p2):
     NORM = math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
     if NORM == 0:
         return 0
-    return 1 / (NORM)
+    return 1 / NORM
 
 
 def poly_fit(traj, traj_len, threshold):
@@ -106,7 +108,7 @@ def read_file(_path, delim='\t'):
     with open(_path, 'r') as f:
         for line in f:
             line = line.strip().split(delim)
-            if (len(line) == 5):
+            if len(line) == 5:
                 for i in range(len(line)):
                     try:
                         line[i] = float(line[i])
@@ -143,9 +145,9 @@ class TrajectoryDataset(Dataset):
         self.seq_len = self.obs_len + self.pred_len
         self.delim = delim
         self.norm_lap_matr = norm_lap_matr
-        if (scaleData and scaler is None):
+        if scaleData and scaler is None:
             self.vScaler = RobustScaler()
-        elif (scaleData):
+        elif scaleData:
             self.vScaler = scaler
         all_files = os.listdir(self.data_dir)
         all_files = [os.path.join(self.data_dir, _path) for _path in all_files]
@@ -157,7 +159,7 @@ class TrajectoryDataset(Dataset):
         non_linear_ped = []
         for path in all_files:
             data = read_file(path, delim)
-            if (np.array_equal(data, [])):
+            if np.array_equal(data, []):
                 print(str(path) + " - No data in file")
                 continue
             frames = np.unique(data[:, 0]).tolist()
@@ -189,7 +191,7 @@ class TrajectoryDataset(Dataset):
                     curr_ped_seq = np.transpose(curr_ped_seq[:, 2:])
                     classEncoding = np.asarray(config.one_hot_encoding[curr_ped_seq[-1][0]], dtype=float)
                     curr_ped_seq = np.array(curr_ped_seq[:-1], dtype=float)
-                    if ((curr_ped_seq.shape[1] != self.seq_len) or (pad_end - pad_front != self.seq_len)):
+                    if (curr_ped_seq.shape[1] != self.seq_len) or (pad_end - pad_front != self.seq_len):
                         continue
                     # Make coordinates relative
                     rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
@@ -253,12 +255,12 @@ class TrajectoryDataset(Dataset):
                                       self.norm_lap_matr)
                 self.v_pred.append(v_.clone())
                 self.A_pred.append(a_.clone())
-            if (scaleData):
+            if scaleData:
                 v_obs_list = []
                 for v in self.v_obs:
                     for obj in v.data.cpu().tolist():
                         v_obs_list += obj
-                if (scaler is None):
+                if scaler is None:
                     self.vScaler.fit(v_obs_list)
                 for i in range(len(self.v_obs)):
                     v = self.v_obs[i]

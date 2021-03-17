@@ -12,11 +12,11 @@ from model import social_stgcnn
 
 class trajectoryPrediction(object):
     def __init__(self, path, samplingRate, checkpoint=None):
-        if (checkpoint is None):
+        if checkpoint is None:
             checkpoint_labels = ""
             if not (config.labels is None):
                 for i in range(len(config.labels)):
-                    if (i == 0):
+                    if i == 0:
                         checkpoint_labels += config.labels[i]
                     else:
                         checkpoint_labels += ("-" + config.labels[i])
@@ -33,11 +33,11 @@ class trajectoryPrediction(object):
 
     def predict(self, pedPastTraj, keys=None, samples=20):
 
-        if (keys is None):
+        if keys is None:
             pedPastTraj = dict(filter(lambda elem: len(elem[1][0]) == 8, pedPastTraj.items()))
         else:
             pedPastTraj = dict(filter(lambda elem: elem[0] in keys and len(elem[1][0]) == 8, pedPastTraj.items()))
-        if (len(pedPastTraj) > 2):
+        if len(pedPastTraj) > 2:
             values = np.array(list(map(self.convertSeq, pedPastTraj.values())), dtype=object)
             values = np.transpose(values, (1, 0))
             seq_list = values[0]
@@ -96,7 +96,8 @@ class trajectoryPrediction(object):
         else:
             return []
 
-    def convertSeq(self, value):
+    @staticmethod
+    def convertSeq(value):
         pedestrianSeq, label = value
         encoding = np.array(config.one_hot_encoding[label.strip("\"")], dtype=float)
         xcoords = []

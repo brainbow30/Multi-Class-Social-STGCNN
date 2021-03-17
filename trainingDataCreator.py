@@ -11,8 +11,8 @@ import config
 
 def rowConversion(row):
     ped_id, x_min, y_min, x_max, y_max, frame, _, _, _, label = row
-    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / (2.0), (
-            float(y_min) + float(y_max)) / (2.0), label.strip("\"")
+    return float(frame), float(ped_id), (float(x_min) + float(x_max)) / 2.0, (
+            float(y_min) + float(y_max)) / 2.0, label.strip("\"")
 
 
 def convertData(data):
@@ -25,7 +25,7 @@ def splitIntoLabels(data, labels):
         for label in labels:
             labelledData[label] = []
         for row in data:
-            if (row[4] in labels):
+            if row[4] in labels:
                 labelledData[row[4]].append(row)
         return labelledData
     else:
@@ -44,10 +44,10 @@ def splitData(data, samplingRate=5):
 def removeEdgeData(data, maxX, maxY):
     # take middle 90% of image to train, test and validate on it
     data = list(filter(lambda row: ((row[2] >= (
-            maxX / (config.fractionToRemove)) and row[2] <= (maxX - maxX / (
+            maxX / config.fractionToRemove) and row[2] <= (maxX - maxX / (
         config.fractionToRemove))) and (row[3] >= (
-            maxY / (config.fractionToRemove)) and row[3] <= (maxY - (
-            maxY / (config.fractionToRemove))))), data))
+            maxY / config.fractionToRemove) and row[3] <= (maxY - (
+            maxY / config.fractionToRemove)))), data))
     return data
 
 
@@ -74,12 +74,12 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                   "combineLocations": config.combineLocationVideos,
                   "complete": False
                   }
-    if (os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json'))):
+    if os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json')):
         with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
             old_config = json.load(f)
         # check if config is the same and creation completed
         new_config["complete"] = True
-        if (new_config == old_config):
+        if new_config == old_config:
             print("No new config, skipping data creation")
             return
         # write json showing data is incomplete
@@ -88,7 +88,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             json.dump(new_config, json_file)
     print("Converting Data...")
     # delete any current data in output folder
-    if (os.path.exists(outputFolder)):
+    if os.path.exists(outputFolder):
         shutil.rmtree(outputFolder)
     locations = os.listdir(inputFolder)
     trainingDataDict = {}
@@ -135,14 +135,14 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             videoTrainingDataDict = splitData(trainingData, samplingRate=samplingRate)
 
             for i in range(samplingRate):
-                if (videoTrainingDataDict[i] != []):
+                if videoTrainingDataDict[i]:
                     trainingDataDict[i] += videoTrainingDataDict[i]
                     class_list += (list(map(lambda row: row[4], videoTrainingDataDict[i])))
-                if (videoTestDataDict[i] != []):
+                if videoTestDataDict[i]:
                     testDataDict[i] += videoTestDataDict[i]
-                if (videoValidationDataDict[i] != []):
+                if videoValidationDataDict[i]:
                     validationDataDict[i] += videoValidationDataDict[i]
-            if (not config.combineLocationVideos):
+            if not config.combineLocationVideos:
                 saveClassInfo(class_list, labels, os.path.join(outputFolder, location, video))
                 class_list = []
                 saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate,
@@ -152,7 +152,7 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
                     testDataDict[i] = []
                     validationDataDict[i] = []
 
-        if (config.combineLocationVideos):
+        if config.combineLocationVideos:
             saveClassInfo(class_list, labels, os.path.join(outputFolder, location))
             saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate,
                      os.path.join(outputFolder, location))
@@ -173,18 +173,18 @@ def saveClassInfo(class_list, labels, outputFolder):
         class_weights = compute_class_weight("balanced", classes=labels, y=class_list)
     except ValueError:
         class_weights = compute_class_weight("balanced", classes=labels, y=class_list + labels)
-    if (not (os.path.isdir(outputFolder))):
+    if not (os.path.isdir(outputFolder)):
         os.makedirs(outputFolder)
     with open(os.path.join(outputFolder, "classInfo.json"), 'w') as json_file:
         json.dump({"class_weights": class_weights.tolist(), "class_counts": class_counts}, json_file)
 
 
 def saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate, outputFolder):
-    if (not (os.path.isdir(os.path.join(outputFolder, "train")))):
+    if not (os.path.isdir(os.path.join(outputFolder, "train"))):
         os.makedirs(os.path.join(outputFolder, "train"))
-    if (not (os.path.isdir(os.path.join(outputFolder, "test")))):
+    if not (os.path.isdir(os.path.join(outputFolder, "test"))):
         os.makedirs(os.path.join(outputFolder, "test"))
-    if (not (os.path.isdir(os.path.join(outputFolder, "val")))):
+    if not (os.path.isdir(os.path.join(outputFolder, "val"))):
         os.makedirs(os.path.join(outputFolder, "val"))
 
     for i in range(samplingRate):
