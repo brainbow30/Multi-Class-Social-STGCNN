@@ -6,7 +6,6 @@ from multiprocessing.spawn import freeze_support
 import torch.distributions.multivariate_normal as torchdist
 from torch.utils.data import DataLoader
 
-import trainingDataCreator
 from metrics import *
 from model import social_stgcnn
 from utils import *
@@ -171,12 +170,8 @@ def test(vScaler=None, KSTEPS=20):
 
 def main():
     global loader_test, model
-    if config.annotationType == "stanford":
-        trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
-                                               samplingRate=config.samplingRate,
-                                               labels=config.labels)
     if config.checkpoint is None:
-        path = os.path.join('checkpoint', config.path + "-" + str(config.samplingRate))
+        path = os.path.join('checkpoint', config.path + "-" + str(config.frameSkip))
         if not (config.labels is None):
             checkpoint_labels = ""
             for i in range(len(config.labels)):
@@ -234,7 +229,7 @@ def main():
             dset_test,
             batch_size=1,  # This is irrelative to the args batch size parameter
             shuffle=False,
-            num_workers=1)
+            num_workers=0)
         # Defining the model
         model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
                               output_feat=args.output_size, seq_len=args.obs_seq_len,
