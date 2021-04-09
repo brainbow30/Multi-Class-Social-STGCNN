@@ -100,7 +100,8 @@ def bivariate_loss(V_pred, V_trgt, C_obs, class_weights):
 
     result = -torch.log(torch.clamp(result, min=epsilon))
     result = torch.mean(result)
-
+    if (not config.class_weighting):
+        return result
     counts = [0] * len(config.labels)
     for enc in C_obs:
         counts[utils.get_index_of_one_hot(enc.tolist())] += 1
