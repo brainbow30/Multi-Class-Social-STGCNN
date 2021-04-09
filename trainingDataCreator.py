@@ -41,13 +41,14 @@ def splitData(data, samplingRate=5):
     return dict
 
 
+# todo check if imrpoves
 def removeEdgeData(data, maxX, maxY):
     # take middle 90% of image to train, test and validate on it
     data = list(filter(lambda row: ((row[2] >= (
-            maxX / config.fractionToRemove) and row[2] <= (maxX - maxX / (
-        config.fractionToRemove))) and (row[3] >= (
-            maxY / config.fractionToRemove) and row[3] <= (maxY - (
-            maxY / config.fractionToRemove)))), data))
+            maxX / config.percentageToRemove) and row[2] <= (maxX - maxX / (
+        config.percentageToRemove))) and (row[3] >= (
+            maxY / config.percentageToRemove) and row[3] <= (maxY - (
+            maxY / config.percentageToRemove)))), data))
     return data
 
 
@@ -64,12 +65,12 @@ def read_file(_path, delim='space'):
     return np.asarray(data)
 
 
-def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
-    new_config = {"samplingRate": config.samplingRate,
+def convertSplitTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
+    new_config = {"samplingRate": config.frameSkip,
                   "labels": labels,
                   "inputFolder": inputFolder,
                   "outputFolder": outputFolder,
-                  "fractionToRemove": config.fractionToRemove,
+                  "fractionToRemove": config.percentageToRemove,
                   "annotationType": config.annotationType,
                   "combineLocations": config.combineLocationVideos,
                   "complete": False
@@ -86,7 +87,6 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
         new_config["complete"] = False
         with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
             json.dump(new_config, json_file)
-    print("Converting Data...")
     # delete any current data in output folder
     if os.path.exists(outputFolder):
         shutil.rmtree(outputFolder)
@@ -106,9 +106,10 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
             path = os.path.join(inputFolder, location, video, "annotations.txt")
             data = read_file(path, 'space')
             data = convertData(data)
-            maxX = max(data, key=lambda x: x[2])[2]
-            maxY = max(data, key=lambda x: x[3])[3]
-            data = removeEdgeData(data, maxX, maxY)
+            if (config.percentageToRemove > 0):
+                maxX = max(data, key=lambda x: x[2])[2]
+                maxY = max(data, key=lambda x: x[3])[3]
+                data = removeEdgeData(data, maxX, maxY)
             testSplit = 0.15
             validSplit = 0.15
             maxTestFrame = int(math.floor(len(data) * testSplit))
@@ -163,6 +164,65 @@ def createTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
         json.dump(new_config, json_file)
 
 
+def convertTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None):
+    new_config = {"samplingRate": config.frameSkip,
+                  "labels": labels,
+                  "inputFolder": inputFolder,
+                  "outputFolder": outputFolder,
+                  "fractionToRemove": config.percentageToRemove,
+                  "annotationType": config.annotationType,
+                  "complete": False
+                  }
+    if os.path.exists(os.path.join(outputFolder, 'trainingDataConfig.json')):
+        with open(os.path.join(outputFolder, 'trainingDataConfig.json')) as f:
+            old_config = json.load(f)
+        # check if config is the same and creation completed
+        new_config["complete"] = True
+        if new_config == old_config:
+            print("No new config, skipping data creation")
+            return
+        # write json showing data is incomplete
+        new_config["complete"] = False
+        with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
+            json.dump(new_config, json_file)
+    # delete any current data in output folder
+    if os.path.exists(outputFolder):
+        shutil.rmtree(outputFolder)
+    trainLocations = os.listdir(os.path.join(inputFolder, "train"))
+    testLocations = os.listdir(os.path.join(inputFolder, "test"))
+    valLocations = os.listdir(os.path.join(inputFolder, "val"))
+    locations = [trainLocations, valLocations, testLocations]
+    class_list = []
+    trainingDataDict = {}
+    testDataDict = {}
+    validationDataDict = {}
+
+    for i in range(samplingRate):
+        trainingDataDict[i] = []
+        testDataDict[i] = []
+        validationDataDict[i] = []
+    dicts = [trainingDataDict, validationDataDict, testDataDict]
+    folders = ["train", "val", "test"]
+    for trainValTest in range(3):
+        for video in locations[trainValTest]:
+            path = os.path.join(inputFolder, folders[trainValTest], video)
+            data = read_file(path, 'space')
+            data = convertData(data)
+            data = list(
+                filter(lambda row: labels is None or row[4] in labels, data))
+            videoDataDict = splitData(data, samplingRate=samplingRate)
+            for i in range(samplingRate):
+                if videoDataDict[i]:
+                    dicts[trainValTest][i] += videoDataDict[i]
+                    class_list += (list(map(lambda row: row[4], videoDataDict[i])))
+
+    saveClassInfo(class_list, labels, os.path.join(outputFolder))
+    saveData(dicts[0], dicts[2], dicts[1], samplingRate,
+             os.path.join(outputFolder))
+
+    new_config["complete"] = True
+    with open(os.path.join(outputFolder, 'trainingDataConfig.json'), 'w') as json_file:
+        json.dump(new_config, json_file)
 
 
 def saveClassInfo(class_list, labels, outputFolder):
@@ -207,3 +267,18 @@ def saveData(trainingDataDict, testDataDict, validationDataDict, samplingRate, o
                          str(i) + ".txt"),
             validationData, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ',
             encoding=None)
+
+
+if config.trainingDataAction == "create":
+    print("Creating Dataset...")
+    convertSplitTrainingData(os.path.join("trainingData\\", config.path),
+                             os.path.join("trainingData\\", config.path + "Processed"),
+                             samplingRate=config.frameSkip,
+                             labels=config.labels)
+
+elif config.trainingDataAction == "convert":
+    print("Converting Dataset...")
+    convertTrainingData(os.path.join("trainingData\\", config.path),
+                        os.path.join("trainingData\\", config.path + "Processed"),
+                        samplingRate=config.frameSkip,
+                        labels=config.labels)
