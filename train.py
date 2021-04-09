@@ -6,7 +6,6 @@ from multiprocessing.spawn import freeze_support
 from torch import optim
 from torch.utils.data import DataLoader
 
-import trainingDataCreator
 from metrics import *
 from model import *
 from utils import *
@@ -42,6 +41,9 @@ def train(model, epoch, optimizer, trainingData, metrics, class_weights):
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
             l = graph_loss(V_pred, V_tr, C_obs[0], class_weights)
+            if True in torch.isnan(l):
+                print("Nan loss")
+                continue
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -92,6 +94,9 @@ def valid(model, epoch, checkpoint_dir, validationData, metrics, constant_metric
 
         if batch_count % args.batch_size != 0 and cnt != turn_point:
             l = graph_loss(V_pred, V_tr, C_obs[0], class_weights)
+            if True in torch.isnan(l):
+                print("Nan loss")
+                continue
             if is_fst_loss:
                 loss = l
                 is_fst_loss = False
@@ -143,6 +148,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         shuffle=True,
         num_workers=0)
     if config.scale:
+        print("Using Scaler")
         dset_val = TrajectoryDataset(
             os.path.join(data_set, 'val'),
             obs_len=obs_seq_len,
@@ -171,8 +177,9 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
         checkpoint_dir = os.path.join(checkpoint_dir, checkpoint_labels)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    with open(os.path.join(checkpoint_dir, 'scalers.pkl'), 'wb') as output:
-        pickle.dump(dset_train.vScaler, output, pickle.HIGHEST_PROTOCOL)
+    if (config.scale):
+        with open(os.path.join(checkpoint_dir, 'scalers.pkl'), 'wb') as output:
+            pickle.dump(dset_train.vScaler, output, pickle.HIGHEST_PROTOCOL)
 
     # Defining the model
     model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
@@ -223,12 +230,7 @@ def start_training(datasetLocation, sampling_rate=15, num_epochs=250):
 if __name__ == '__main__':
     freeze_support()
     if config.annotationType == "stanford":
-        print("Converting Stanford Dataset...")
-        trainingDataCreator.createTrainingData("trainingData\\stanford", "trainingData\\stanfordProcessed",
-                                               samplingRate=config.samplingRate,
-                                               labels=config.labels)
-
-        checkpoint_dir = os.path.join("checkpoint", config.path + "-" + str(config.samplingRate))
+        checkpoint_dir = os.path.join("checkpoint", config.path + "-" + str(config.frameSkip))
         if not (config.labels is None):
             checkpoint_labels = ""
             for i in range(len(config.labels)):
@@ -263,4 +265,4 @@ if __name__ == '__main__':
                         help='Use lr rate scheduler')
 
     args = parser.parse_args()
-    start_training(config.path, sampling_rate=config.samplingRate, num_epochs=config.epochs)
+    start_training(config.path, sampling_rate=config.frameSkip, num_epochs=config.epochs)
