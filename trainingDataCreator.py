@@ -32,7 +32,7 @@ def splitIntoLabels(data, labels):
         return data
 
 
-def splitData(data, samplingRate=5):
+def splitDataIntoSeqs(data, samplingRate=5):
     dict = {}
     for i in range(samplingRate):
         dict[i] = []
@@ -41,7 +41,7 @@ def splitData(data, samplingRate=5):
     return dict
 
 
-# todo check if imrpoves
+# todo check if improves
 def removeEdgeData(data, maxX, maxY):
     # take middle 90% of image to train, test and validate on it
     data = list(filter(lambda row: ((row[2] >= (
@@ -117,11 +117,11 @@ def convertSplitTrainingData(inputFolder, outputFolder, samplingRate=15, labels=
 
             testData = list(
                 filter(lambda row: labels is None or row[4] in labels, data[:maxTestFrame]))
-            videoTestDataDict = splitData(testData, samplingRate=samplingRate)
+            videoTestDataDict = splitDataIntoSeqs(testData, samplingRate=samplingRate)
 
             validationData = list(
                 filter(lambda row: labels is None or row[4] in labels, data[maxTestFrame:maxValidFrame]))
-            videoValidationDataDict = splitData(validationData, samplingRate=samplingRate)
+            videoValidationDataDict = splitDataIntoSeqs(validationData, samplingRate=samplingRate)
 
             trainingData = data[maxValidFrame:]
             trainingData = list(
@@ -133,7 +133,7 @@ def convertSplitTrainingData(inputFolder, outputFolder, samplingRate=15, labels=
             # for label in labels:
             #     #todo find better sampling method
             #     trainingData+=(videoTrainingDataDict[label][:desiredLength])
-            videoTrainingDataDict = splitData(trainingData, samplingRate=samplingRate)
+            videoTrainingDataDict = splitDataIntoSeqs(trainingData, samplingRate=samplingRate)
 
             for i in range(samplingRate):
                 if videoTrainingDataDict[i]:
@@ -208,9 +208,15 @@ def convertTrainingData(inputFolder, outputFolder, samplingRate=15, labels=None)
             path = os.path.join(inputFolder, folders[trainValTest], video)
             data = read_file(path, 'space')
             data = convertData(data)
+            if (len(data) == 0):
+                continue
+            if (config.percentageToRemove > 0):
+                maxX = max(data, key=lambda x: x[2])[2]
+                maxY = max(data, key=lambda x: x[3])[3]
+                data = removeEdgeData(data, maxX, maxY)
             data = list(
                 filter(lambda row: labels is None or row[4] in labels, data))
-            videoDataDict = splitData(data, samplingRate=samplingRate)
+            videoDataDict = splitDataIntoSeqs(data, samplingRate=samplingRate)
             for i in range(samplingRate):
                 if videoDataDict[i]:
                     dicts[trainValTest][i] += videoDataDict[i]
