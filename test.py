@@ -208,6 +208,15 @@ def main():
         # Data prep
         obs_seq_len = args.obs_seq_len
         pred_seq_len = args.pred_seq_len
+
+        # Defining the model
+        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
+                              output_feat=args.output_size, seq_len=args.obs_seq_len,
+                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
+                              hot_enc_length=len(config.labels)).cuda()
+        model.load_state_dict(torch.load(model_path))
+        model.cuda()
+
         data_set = os.path.join('trainingData', config.path)
         if config.scale:
             with open(os.path.join(exp_path, 'scalers.pkl'), 'rb') as input:
@@ -230,13 +239,6 @@ def main():
             batch_size=1,  # This is irrelative to the args batch size parameter
             shuffle=False,
             num_workers=0)
-        # Defining the model
-        model = social_stgcnn(n_stgcnn=args.n_stgcnn, n_txpcnn=args.n_txpcnn,
-                              output_feat=args.output_size, seq_len=args.obs_seq_len,
-                              kernel_size=args.kernel_size, pred_seq_len=args.pred_seq_len,
-                              hot_enc_length=len(config.labels)).cuda()
-        model.load_state_dict(torch.load(model_path))
-        model.cuda()
 
         print("Testing ....")
         ad, fd, a2d, afd, raw_data_dic_, errors = test(vScaler=vScaler)
