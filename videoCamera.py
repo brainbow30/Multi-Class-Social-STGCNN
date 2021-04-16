@@ -76,25 +76,42 @@ class VideoCamera(object):
                     if i < len(keys):
                         cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
+        # show ground truth for predictions and save image
+        # if (frameNum % (self.samplingRate * 12) == 0):
+        #     for i in range(12):
+        #         future=self.annotations.getFrameAnnotations(frameNum+i*self.samplingRate)
+        #         for annotation in future:
+        #             try:
+        #                 ped_id, x_min, y_min, x_max, y_max, label = annotation
+        #                 if(label.strip("\"") in config.labels):
+        #                     ped_id = int(float(ped_id))
+        #                     x, y = utils.centerCoord([x_min, y_min, x_max, y_max])
+        #                     cv2.circle(frame, center=(int(x), int(y)), radius=3, color=self.colours[ped_id], thickness=2)
+        #             except:
+        #                 None
+        #     cv2.imwrite("photos/" + str(
+        #         frameNum) + "deathcircle1.png", frame)
         ret, jpeg = cv2.imencode('.jpg', frame)
+
         return ret, jpeg.tobytes()
 
     def displayAnnotation(self, frame, annotation):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
-        ped_id = int(float(ped_id))
-        min_coords = np.array([x_min, y_min])
-        max_coords = np.array([x_max, y_max])
-        y_min, x_min = utils.to_image_frame(self.H, min_coords)
-        y_max, x_max = utils.to_image_frame(self.H, max_coords)
-        if not (ped_id in self.colours):
-            self.colours[ped_id] = (int(np.random.randint(0, 255)), int(np.random.randint(0, 255)),
-                                    int(np.random.randint(0, 255)))
-        centerX, centerY = utils.centerCoord([x_min, y_min, x_max, y_max])
-        centerX, centerY = int(centerX), int(centerY)
+        if (label.strip("\"") in config.labels):
+            ped_id = int(float(ped_id))
+            min_coords = np.array([x_min, y_min])
+            max_coords = np.array([x_max, y_max])
+            y_min, x_min = utils.to_image_frame(self.H, min_coords)
+            y_max, x_max = utils.to_image_frame(self.H, max_coords)
+            if not (ped_id in self.colours):
+                self.colours[ped_id] = (int(np.random.randint(0, 255)), int(np.random.randint(0, 255)),
+                                        int(np.random.randint(0, 255)))
+            centerX, centerY = utils.centerCoord([x_min, y_min, x_max, y_max])
+            centerX, centerY = int(centerX), int(centerY)
 
-        cv2.circle(frame, center=(centerX, centerY), radius=7, color=self.colours[ped_id],
-                   thickness=-1)
-        cv2.circle(frame, center=(centerX, centerY), radius=7, color=(0, 0, 0), thickness=2)
+            cv2.circle(frame, center=(centerX, centerY), radius=7, color=self.colours[ped_id],
+                       thickness=-1)
+            cv2.circle(frame, center=(centerX, centerY), radius=7, color=(0, 0, 0), thickness=2)
 
     def updatePastTraj(self, annotation, newPedPastTraj):
         ped_id, x_min, y_min, x_max, y_max, label = annotation
