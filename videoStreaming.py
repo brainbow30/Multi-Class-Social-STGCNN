@@ -21,7 +21,7 @@ def index():
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(gen_frames(VideoCamera(config.samplingRate)), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(gen_frames(VideoCamera(config.frameSkip)), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 if __name__ == "__main__":

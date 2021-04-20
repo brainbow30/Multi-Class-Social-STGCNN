@@ -77,20 +77,22 @@ class VideoCamera(object):
                         cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
         # show ground truth for predictions and save image
-        # if (frameNum % (self.samplingRate * 12) == 0):
-        #     for i in range(12):
-        #         future=self.annotations.getFrameAnnotations(frameNum+i*self.samplingRate)
-        #         for annotation in future:
-        #             try:
-        #                 ped_id, x_min, y_min, x_max, y_max, label = annotation
-        #                 if(label.strip("\"") in config.labels):
-        #                     ped_id = int(float(ped_id))
-        #                     x, y = utils.centerCoord([x_min, y_min, x_max, y_max])
-        #                     cv2.circle(frame, center=(int(x), int(y)), radius=3, color=self.colours[ped_id], thickness=2)
-        #             except:
-        #                 None
-        #     cv2.imwrite("photos/" + str(
-        #         frameNum) + "deathcircle1.png", frame)
+        if (config.showGroundTruth and frameNum % (self.samplingRate * 12) == 0):
+            for i in range(12):
+                future = self.annotations.getFrameAnnotations(frameNum + i * self.samplingRate)
+                for annotation in future:
+                    try:
+                        ped_id, x_min, y_min, x_max, y_max, label = annotation
+                        if (label.strip("\"") in config.labels):
+                            ped_id = int(float(ped_id))
+                            x, y = utils.centerCoord([x_min, y_min, x_max, y_max])
+                            cv2.circle(frame, center=(int(x), int(y)), radius=3, color=self.colours[ped_id],
+                                       thickness=2)
+                    except:
+                        None
+            if (config.saveImages):
+                cv2.imwrite("photos/" + str(
+                    frameNum) + "deathcircle1.png", frame)
         ret, jpeg = cv2.imencode('.jpg', frame)
 
         return ret, jpeg.tobytes()
