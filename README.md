@@ -1,18 +1,18 @@
 # Video_Trajectory_Predictor
 
-##Installation
+## Installation
 install requirements ```$ pip install -r requirements.txt```
 
-##Train
+## Train
 run ```train.py```
 
-##Test
+## Test
 run ```test.py```
 
-##Visualise
+## Visualise
 run ```videoStreaming.py``` and go to localhost:5000
 
-##Config
+## Config
 ```path``` - location of video or training data
 
 ```class_enc``` - True or False whether to include class encoding module in model
