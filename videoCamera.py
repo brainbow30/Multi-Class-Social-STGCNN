@@ -77,7 +77,7 @@ class VideoCamera(object):
                         cv2.line(frame, (x, y), (x2, y2), self.colours[keys[i]], 2)
             prevFrame = framePrediction
         # show ground truth for predictions and save image
-        if (config.showGroundTruth and frameNum % (self.samplingRate * 12) == 0):
+        if (config.showGroundTruth):
             for i in range(12):
                 future = self.annotations.getFrameAnnotations(frameNum + i * self.samplingRate)
                 for annotation in future:
@@ -90,7 +90,7 @@ class VideoCamera(object):
                                        thickness=2)
                     except:
                         None
-            if (config.saveImages):
+            if (config.saveImages and frameNum % (self.samplingRate * 12) == 0):
                 cv2.imwrite("photos/" + str(
                     frameNum) + "deathcircle1.png", frame)
         ret, jpeg = cv2.imencode('.jpg', frame)
