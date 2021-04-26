@@ -79,7 +79,8 @@ class VideoCamera(object):
         # show ground truth for predictions and save image
         if (config.showGroundTruth):
             for i in range(12):
-                future = self.annotations.getFrameAnnotations(frameNum + i * self.samplingRate)
+                future = self.annotations.getFrameAnnotations(
+                    frameNum - (frameNum % (self.samplingRate * 12)) + (i * self.samplingRate))
                 for annotation in future:
                     try:
                         ped_id, x_min, y_min, x_max, y_max, label = annotation
